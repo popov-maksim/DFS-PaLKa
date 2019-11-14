@@ -7,9 +7,9 @@ redis_test = redis.Redis(host='localhost', port=6379, db=0, decode_responses=Tru
 redis_test.set_response_callback('GET', int)
 
 
-@application.route("/test")
+@application.route("/", methods=['POST'])
 def login():
-    param = flask.request.form.get(name='param_1', default=228, type=int)
+    param = flask.request.form.get(key='param_1', default=228, type=int)
     redis_test.set(name='key_1', value=param)
     param_from_redis = redis_test.get(name='key_1')
     data = {"answer_param_1": param_from_redis}

@@ -2,6 +2,7 @@ import flask
 from http import HTTPStatus
 import redis
 from constants import *
+from auth import encode_auth_token, decode_auth_token
 
 application = flask.Flask(__name__)
 
@@ -51,8 +52,8 @@ def flask_login():
     if encrypted_pass_db != encrypted_pass:
         return flask.make_response(flask.jsonify({}), HTTPStatus.FORBIDDEN)
 
-    # gen tokens
-    # return flask.make_response(flask.jsonify({}), HTTPStatus.OK)
+    token = encode_auth_token(login)
+    return flask.make_response(flask.jsonify({TOKEN_KEY: token}), HTTPStatus.OK)
 
 
 if __name__ == "__main__":

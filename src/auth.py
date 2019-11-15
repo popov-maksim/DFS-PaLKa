@@ -1,6 +1,6 @@
 import jwt
 import datetime
-from constants import *
+from src.constants import *
 from typing import Optional
 
 

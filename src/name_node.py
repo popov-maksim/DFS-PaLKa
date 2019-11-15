@@ -1,8 +1,8 @@
 import flask
 from http import HTTPStatus
 import redis
-from constants import *
-from auth import encode_auth_token, decode_auth_token
+from src.constants import *
+from src.auth import encode_auth_token
 
 application = flask.Flask(__name__)
 

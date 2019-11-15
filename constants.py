@@ -3,6 +3,7 @@ import os
 LOGIN_KEY = 'login'
 ENCRYPTED_PASS_KEY = 'encrypted_pass'
 TOKEN_KEY = 'token'
+MESSAGE_KEY = 'message'
 
 TOKEN_TTL_MINUTES = 30
 

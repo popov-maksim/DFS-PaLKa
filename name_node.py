@@ -6,7 +6,7 @@ from auth import encode_auth_token, decode_auth_token
 
 application = flask.Flask(__name__)
 
-redis_test = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+redis_test = redis.Redis(host='localhost', port=6379, db=99, decode_responses=True)
 redis_test.set_response_callback('GET', int)
 
 db_auth = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
@@ -28,13 +28,15 @@ def flask_reg():
     encrypted_pass = flask.request.form.get(key=ENCRYPTED_PASS_KEY, default=None, type=str)
 
     if login is None or encrypted_pass is None:
-        return flask.make_response(flask.jsonify({}), HTTPStatus.UNPROCESSABLE_ENTITY)
+        data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`, `{ENCRYPTED_PASS_KEY}`"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     if db_auth.exists(login):
-        return flask.make_response(flask.jsonify({}), HTTPStatus.FORBIDDEN)
+        data = {MESSAGE_KEY: "The login was already registered, use another one"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
     db_auth.set(name=login, value=encrypted_pass)
-    return flask.make_response(flask.jsonify({}), HTTPStatus.OK)
+    return flask.redirect('/login')
 
 
 @application.route("/login", methods=['POST'])
@@ -43,17 +45,21 @@ def flask_login():
     encrypted_pass = flask.request.form.get(key=ENCRYPTED_PASS_KEY, default=None, type=str)
 
     if login is None or encrypted_pass is None:
-        return flask.make_response(flask.jsonify({}), HTTPStatus.UNPROCESSABLE_ENTITY)
+        data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`, `{ENCRYPTED_PASS_KEY}`"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
-    if db_auth.exists(login):
-        return flask.make_response(flask.jsonify({}), HTTPStatus.FORBIDDEN)
+    if not db_auth.exists(login):
+        data = {MESSAGE_KEY: "The login is not registered"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
     encrypted_pass_db = db_auth.get(login)
     if encrypted_pass_db != encrypted_pass:
-        return flask.make_response(flask.jsonify({}), HTTPStatus.FORBIDDEN)
+        data = {MESSAGE_KEY: "Wrong password"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
     token = encode_auth_token(login)
-    return flask.make_response(flask.jsonify({TOKEN_KEY: token}), HTTPStatus.OK)
+    data = {MESSAGE_KEY: "Success", TOKEN_KEY: token}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
 if __name__ == "__main__":

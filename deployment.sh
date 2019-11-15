@@ -1,4 +1,4 @@
- #!/usr/bin/env bash
+#!/usr/bin/env bash
 
 sudo apt-get install -y python3-venv
 python3 -m venv venv

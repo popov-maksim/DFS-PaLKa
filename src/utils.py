@@ -36,6 +36,18 @@ def decode_auth_token(auth_token: str) -> Optional[str]:
         return None
 
 
+def read_token():
+    token = None
+    with open(TOKEN_FILE, "r") as f:
+        token = f.read().strip()
+    return token
+
+
+def save_token(token):
+    with open(TOKEN_FILE, "w") as f:
+        token = f.write(token)
+
+
 def from_subnet_ip(func):
     @functools.wraps(func)
     def wrapped_function(*args, **kwargs):

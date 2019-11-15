@@ -9,6 +9,11 @@ TOKEN_KEY = 'token'
 MESSAGE_KEY = 'message'
 
 TOKEN_TTL_MINUTES = 30
+TOKEN_FILE = "token.tk"
+
+NAMENODE_IP = "127.0.0.1"
+
+ROOT = "/var/storage"
 
 try:
     SECRET_KEY = os.getenv('SECRET_KEY')

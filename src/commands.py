@@ -1,3 +1,35 @@
+import requests
+import hashlib
+from src.utils import read_token, save_token
+from src.constants import *
+from src.logger import debug_log
+
+
+def _auth(params, action):
+    if len(params) < 2:
+        print("Specify login and password please.")
+        return
+    
+    login = params[0]
+    password = params[1]
+    
+    if login == "" or password == "":
+        print("Please give me non-empty login and password")
+        return
+    
+    encrypted_pass = hashlib.md5(password)
+    data = {LOGIN_KEY: login, ENCRYPTED_PASS_KEY: encrypted_pass}
+    res = requests.post(f"{NAMENODE_IP}/{action}", json=data)
+
+    if res.ok:
+        token = res.json[TOKEN_KEY]
+        save_token(token)
+        print("Success!\nYou were logged in.")
+    else:
+        msg = res.json[MESSAGE_KEY]
+        print(msg)
+
+
 def help_command(params=None):
     print("Available commands:\n")
     for cmd, descript in COMMAND_DESCRIPTIONS.items():
@@ -6,15 +38,23 @@ def help_command(params=None):
 
 
 def reg_command(params):
-    pass
+    _auth(params, "reg")
 
 
 def login_command(params):
-    pass
+    _auth(params, "login")
 
 
-def init_command(params):
-    pass
+def init_command(params=None):
+    token = read_token()
+
+    res = requests.post(f"{NAMENODE_IP}/init", json={TOKEN_KEY: token})
+    debug_log(res.json())
+
+    if res.ok:
+        print("Success!")
+    else:
+        print("Failed")
 
 
 def fdelete_command(params):

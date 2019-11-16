@@ -30,6 +30,19 @@ def _auth(params, action):
         print(msg)
 
 
+def _command(params, action):
+    token = read_token()
+
+    res = requests.post(f"{NAMENODE_IP}/{action}", json={TOKEN_KEY: token})
+    debug_log(res.json())
+
+    if res.ok:
+        print("Success!")
+    else:
+        msg = res.json[MESSAGE_KEY]
+        print(msg)
+
+
 def help_command(params=None):
     print("Available commands:\n")
     for cmd, descript in COMMAND_DESCRIPTIONS.items():
@@ -46,59 +59,51 @@ def login_command(params):
 
 
 def init_command(params=None):
-    token = read_token()
-
-    res = requests.post(f"{NAMENODE_IP}/init", json={TOKEN_KEY: token})
-    debug_log(res.json())
-
-    if res.ok:
-        print("Success!")
-    else:
-        print("Failed")
+    _command(params, "init")
 
 
 def fdelete_command(params):
-    pass
+    _command(params, "fdelete")
 
 
 def fcreate_command(params):
-    pass
+    _command(params, "fcreate")
 
 
 def fread_command(params):
-    pass
+    _command(params, "fread")
 
 
 def fwrite_command(params):
-    pass
+    _command(params, "fwrite")
 
 
 def finfo_command(params):
-    pass
+    _command(params, "finfo")
 
 
 def fcopy_command(params):
-    pass
+    _command(params, "fcopy")
 
 
 def fmove_command(params):
-    pass
+    _command(params, "fmove")
 
 
 def odir_command(params):
-    pass
+    _command(params, "odir")
 
 
 def rdir_command(params):
-    pass
+    _command(params, "rdir")
 
 
 def mdir_command(params):
-    pass
+    _command(params, "mdir")
 
 
 def ddir_command(params):
-    pass
+    _command(params, "ddir")
 
 
 AVAILABLE_COMMANDS = {

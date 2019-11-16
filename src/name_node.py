@@ -15,7 +15,7 @@ import redis
 
 from src.constants import *
 from src.logger import debug_log
-from src.utils import encode_auth_token, decode_auth_token, request_node
+from src.utils import encode_auth_token, decode_auth_token, request_node, from_subnet_ip
 
 application = flask.Flask(__name__)
 
@@ -474,8 +474,59 @@ def remove_node(node_ip):
     db_node2files.delete(node_ip)
     for full_file_path in full_file_paths:
         db_file2nodes.delete(full_file_path)
+        replicate(full_file_path)
 
-    # todo replicate
+
+@application.route("/uploaded", methods=['POST'])
+@from_subnet_ip
+def flask_uploaded():
+    file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
+    login = flask.request.form.get(key=LOGIN_KEY, default=None, type=str)
+    file_size = flask.request.form.get(key=FILE_SIZE_KEY, default=None, type=str)
+
+    if not file_path or not login or not file_size:
+        data = {MESSAGE_KEY: f"Missing required parameters: `{PATH_KEY}`, `{LOGIN_KEY}`, `{FILE_SIZE_KEY}`"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
+
+    full_file_path = os.path.join(login, file_path)
+
+    db_file2size.set(full_file_path, file_size)
+    db_user2files.set(login, full_file_path)
+
+    source_node_ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
+
+    nodes_with_obsolete_files = db_file2nodes.lrange(full_file_path, 0, -1)
+    nodes_with_obsolete_files.remove(source_node_ip)
+    for node_ip in nodes_with_obsolete_files:
+        res = request_node(node_ip, '/fdelete', {FULL_PATH_KEY: full_file_path})
+        if res is None:
+            debug_log(f"Node {node_ip} did not response on /fdelete")
+        db_node2files.lrem(node_ip, 0, full_file_path)
+
+    replicate(full_file_path=full_file_path)
+
+    data = {MESSAGE_KEY: 'OK, uploaded.'}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
+
+
+def replicate(full_file_path: str):
+    source_nodes_ip = db_file2nodes.lrange(full_file_path, 0, -1)
+    assert source_nodes_ip
+
+    target_nodes_ip = db_node2files.keys()
+    target_nodes_ip = list(set(target_nodes_ip) - set(source_nodes_ip))
+
+    congestions = [(node_ip, db_congestion.get(node_ip)) for node_ip in target_nodes_ip]
+    congestions = sorted(congestions, key=lambda x: x[1])
+    target_nodes_ip = [congestion[0] for congestion in congestions[:REPLICATION_FACTOR - len(source_nodes_ip)]]
+    debug_log(f"Going to replicate {full_file_path} from {source_nodes_ip} "
+              f"to nodes with lowest congestion: {target_nodes_ip}")
+
+    for target_node_ip in target_nodes_ip:
+        res = request_node(source_nodes_ip[0], '/replicate', {FULL_PATH_KEY: full_file_path,
+                                                              NODE_IP_KEY: target_node_ip})
+        if res is None:
+            debug_log(f"Node {source_nodes_ip[0]} did not response on /replicate")
 
 
 if __name__ == "__main__":

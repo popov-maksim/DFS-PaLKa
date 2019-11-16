@@ -11,8 +11,14 @@ TOKEN_KEY = 'token'
 MESSAGE_KEY = 'message'
 PATH_KEY = 'path'
 FULL_PATH_KEY = 'full_path'
+PATH_DESTINATION_KEY = 'path_destination'  # copy destination
+FULL_PATH_DESTINATION_KEY = 'full_path_destination'
 CONGESTION_KEY = 'congestion'
 NODE_IP_KEY = 'node_ip'
+FILE_SIZE_KEY = 'file_size'
+EXISTS_KEY = 'exists'
+DIR_LIST_KEY = 'dir_list'
+FORCE_KEY = 'force'
 
 TOKEN_TTL_MINUTES = 30
 TOKEN_FILE = "token.tk"

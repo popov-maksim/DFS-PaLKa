@@ -4,6 +4,7 @@ file_path - path without login prefix (folder_1/file_1.txt)
 full_file_path - full file path with login prefix: (login_1/folder_1/file_1.txt)
 """
 
+import re
 import threading
 import time
 from http import HTTPStatus
@@ -128,7 +129,7 @@ def flask_init():
 @application.route("/fcreate", methods=['POST'])
 def flask_fcreate():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
-    file_path = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
+    file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
 
     if not token or not file_path:
         data = {MESSAGE_KEY: f"Missing required parameters: `{TOKEN_KEY}`, `{PATH_KEY}`"}
@@ -162,7 +163,7 @@ def flask_fcreate():
 @application.route("/fread", methods=['POST'])
 def flask_fread():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
-    file_path = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
+    file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
 
     if not token or not file_path:
         data = {MESSAGE_KEY: f"Missing required parameters: `{TOKEN_KEY}`, `{PATH_KEY}`"}
@@ -213,7 +214,7 @@ def flask_fwrite():
 @application.route("/fdelete", methods=['POST'])
 def flask_fdelete():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
-    file_path = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
+    file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
 
     if not token or not file_path:
         data = {MESSAGE_KEY: f"Missing required parameters: `{TOKEN_KEY}`, `{PATH_KEY}`"}
@@ -226,12 +227,225 @@ def flask_fdelete():
 
     full_file_path = os.path.join(login, file_path)
 
+    exists = full_file_path in db_user2files.lrange(login, 0, -1)
+    if not exists:
+        data = {MESSAGE_KEY: "The file for deleting does not exist"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.NOT_FOUND)
+
     for node_ip in db_file2nodes.lrange(full_file_path, 0, -1):
         res = request_node(node_ip, '/fdelete', {FULL_PATH_KEY: full_file_path})
         if res is None:
             debug_log(f"Node {node_ip} did not response on /fdelete")
+        db_node2files.lrem(node_ip, 0, full_file_path)
+
+    db_user2files.lrem(login, 0, full_file_path)
+    db_file2nodes.delete(full_file_path)
+    db_file2size.delete(full_file_path)
 
     data = {MESSAGE_KEY: f"Successfully deleted the file"}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
+
+
+@application.route("/fcopy", methods=['POST'])
+def flask_fcopy():
+    token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
+    file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
+    file_destination_path = flask.request.form.get(key=PATH_DESTINATION_KEY, default=None, type=str)
+
+    if not token or not file_path or not file_destination_path:
+        data = {MESSAGE_KEY: f"Missing required parameters: `{TOKEN_KEY}`, `{PATH_KEY}`, `{PATH_DESTINATION_KEY}`"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
+
+    login = decode_auth_token(token)
+    if not login:
+        data = {MESSAGE_KEY: "The token is invalid or has expired"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
+
+    full_file_path = os.path.join(login, file_path)
+    full_file_destination_path = os.path.join(login, file_destination_path)
+
+    for node_ip in db_file2nodes.lrange(full_file_path, 0, -1):
+        res = request_node(node_ip, '/fcopy', {FULL_PATH_KEY: full_file_path,
+                                               FULL_PATH_DESTINATION_KEY: full_file_destination_path})
+        if res is None:
+            debug_log(f"Node {node_ip} did not response on /fcopy")
+
+    data = {MESSAGE_KEY: f"Successfully copied the file"}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
+
+
+@application.route("/fmove", methods=['POST'])
+def flask_fmove():
+    token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
+    file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
+    file_destination_path = flask.request.form.get(key=PATH_DESTINATION_KEY, default=None, type=str)
+
+    if not token or not file_path or not file_destination_path:
+        data = {MESSAGE_KEY: f"Missing required parameters: `{TOKEN_KEY}`, `{PATH_KEY}`, `{PATH_DESTINATION_KEY}`"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
+
+    login = decode_auth_token(token)
+    if not login:
+        data = {MESSAGE_KEY: "The token is invalid or has expired"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
+
+    full_file_path = os.path.join(login, file_path)
+    full_file_destination_path = os.path.join(login, file_destination_path)
+
+    for node_ip in db_file2nodes.lrange(full_file_path, 0, -1):
+        res = request_node(node_ip, '/fmove', {FULL_PATH_KEY: full_file_path,
+                                               FULL_PATH_DESTINATION_KEY: full_file_destination_path})
+        if res is None:
+            debug_log(f"Node {node_ip} did not response on /fmove")
+
+    data = {MESSAGE_KEY: f"Successfully moved the file"}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
+
+
+@application.route("/finfo", methods=['POST'])
+def flask_finfo():
+    token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
+    file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
+
+    if not token or not file_path:
+        data = {MESSAGE_KEY: f"Missing required parameters: `{TOKEN_KEY}`, `{PATH_KEY}`"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
+
+    login = decode_auth_token(token)
+    if not login:
+        data = {MESSAGE_KEY: "The token is invalid or has expired"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
+
+    full_file_path = os.path.join(login, file_path)
+
+    data = {NODE_IP_KEY: db_file2nodes.lrange(full_file_path, 0, -1),
+            FILE_SIZE_KEY: db_file2size.get(full_file_path)}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
+
+
+@application.route("/dir_exists", methods=['POST'])
+def flask_dir_exists():
+    token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
+    dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
+
+    if not token or not dir_path:
+        data = {MESSAGE_KEY: f"Missing required parameters: `{TOKEN_KEY}`, `{PATH_KEY}`"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
+
+    login = decode_auth_token(token)
+    if not login:
+        data = {MESSAGE_KEY: "The token is invalid or has expired"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
+
+    dir_path = dir_path if dir_path[-1] == '/' else f"{dir_path}/"
+    full_dir_path = os.path.join(login, dir_path)
+
+    exists = any(full_file_path.startswith(full_dir_path) for full_file_path in db_user2files.lrange(login, 0, -1))
+
+    data = {EXISTS_KEY: exists}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
+
+
+@application.route("/rdir", methods=['POST'])
+def flask_rdir():
+    token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
+    dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
+
+    if not token or not dir_path:
+        data = {MESSAGE_KEY: f"Missing required parameters: `{TOKEN_KEY}`, `{PATH_KEY}`"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
+
+    login = decode_auth_token(token)
+    if not login:
+        data = {MESSAGE_KEY: "The token is invalid or has expired"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
+
+    dir_path = dir_path if dir_path[-1] == '/' else f"{dir_path}/"
+    full_dir_path = os.path.join(login, dir_path)
+
+    inner_paths_list = [full_path[len(full_dir_path):] for full_path in db_user2files.lrange(login, 0, -1) if
+                        full_path.startswith(full_dir_path)]
+    dir_list = []
+    for inner_path in inner_paths_list:
+        m = re.search(r'^([^/]+/?)', '')
+        if m:
+            dir_list.append(m.group(0))
+
+    data = {DIR_LIST_KEY: dir_list}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
+
+
+@application.route("/mdir", methods=['POST'])
+def flask_mdir():
+    token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
+    dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
+
+    if not token or not dir_path:
+        data = {MESSAGE_KEY: f"Missing required parameters: `{TOKEN_KEY}`, `{PATH_KEY}`"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
+
+    login = decode_auth_token(token)
+    if not login:
+        data = {MESSAGE_KEY: "The token is invalid or has expired"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
+
+    dir_path = dir_path if dir_path[-1] == '/' else f"{dir_path}/"
+    full_dir_path = os.path.join(login, dir_path)
+
+    db_user2files.lpush(login, full_dir_path)
+
+    data = {MESSAGE_KEY: 'Successfully created a directory'}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
+
+
+@application.route("/ddir", methods=['POST'])
+def flask_ddir():
+    token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
+    dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
+    force = flask.request.form.get(key=FORCE_KEY, default=None, type=bool)
+
+    if not token or not dir_path or force is None:
+        data = {MESSAGE_KEY: f"Missing required parameters: `{TOKEN_KEY}`, `{PATH_KEY}`, `{FORCE_KEY}`"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
+
+    login = decode_auth_token(token)
+    if not login:
+        data = {MESSAGE_KEY: "The token is invalid or has expired"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
+
+    dir_path = dir_path if dir_path[-1] == '/' else f"{dir_path}/"
+    full_dir_path = os.path.join(login, dir_path)
+
+    inner_paths_list = [full_path[len(full_dir_path):] for full_path in db_user2files.lrange(login, 0, -1) if
+                        full_path.startswith(full_dir_path)]
+    exists = any(inner_paths_list)
+    if not exists:
+        data = {MESSAGE_KEY: "The folder for deleting does not exist"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.NOT_FOUND)
+
+    lst = inner_paths_list.copy()
+    lst.remove('')
+    if lst and not force:
+        data = {MESSAGE_KEY: 'The directory contains files. `force=true` to delete'}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.NOT_MODIFIED)
+
+    nodes_ip = []
+    for inner_path in inner_paths_list:
+        full_file_path = full_dir_path + inner_path
+        for node_ip in db_file2nodes.lrange(login, 0, -1):
+            if node_ip not in nodes_ip:
+                nodes_ip.append(node_ip)
+            db_node2files.lrem(node_ip, 0, full_file_path)
+        db_file2nodes.delete(full_file_path)
+        db_file2size.delete(full_file_path)
+        db_user2files.lrem(login, 0, full_file_path)
+
+    for node_ip in nodes_ip:
+        res = request_node(node_ip, '/ddir', {FULL_PATH_KEY: full_dir_path})
+        if res is None:
+            debug_log(f"Node {node_ip} did not response on /ddir")
+
+    data = {MESSAGE_KEY: 'Successfully deleted the directory'}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 

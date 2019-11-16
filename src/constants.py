@@ -1,4 +1,7 @@
+import ipaddress
 import os
+
+SUBNET = ipaddress.ip_network('127.0.0.0/24')
 
 LOGIN_KEY = 'login'
 ENCRYPTED_PASS_KEY = 'encrypted_pass'

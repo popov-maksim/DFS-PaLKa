@@ -1,7 +1,13 @@
-import jwt
 import datetime
-from src.constants import *
+import functools
+from http import HTTPStatus
 from typing import Optional
+
+import flask
+import jwt
+
+from src.constants import *
+from src.logger import debug_log
 
 
 def encode_auth_token(login: str) -> str:
@@ -28,3 +34,16 @@ def decode_auth_token(auth_token: str) -> Optional[str]:
         return payload['sub']
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
         return None
+
+
+def from_subnet_ip(func):
+    @functools.wraps(func)
+    def wrapped_function(*args, **kwargs):
+        ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
+        is_allowed = ip and ipaddress.ip_address(ip) in SUBNET
+        debug_log(f"Query from {ip} - {'Allowed' if is_allowed else 'Denied'}")
+        if is_allowed:
+            return func(*args, **kwargs)
+        return flask.make_response(flask.jsonify({MESSAGE_KEY: "Who are you? GTFO!"}), HTTPStatus.FORBIDDEN)
+
+    return wrapped_function

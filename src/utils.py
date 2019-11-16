@@ -1,13 +1,18 @@
 import datetime
 import functools
+import json
 from http import HTTPStatus
 from typing import Optional
 
+import certifi
 import flask
 import jwt
+import urllib3
 
 from src.constants import *
 from src.logger import debug_log
+
+https_client = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
 
 
 def encode_auth_token(login: str) -> str:
@@ -47,3 +52,12 @@ def from_subnet_ip(func):
         return flask.make_response(flask.jsonify({MESSAGE_KEY: "Who are you? GTFO!"}), HTTPStatus.FORBIDDEN)
 
     return wrapped_function
+
+
+def request_node(ip, url, data):
+    try:
+        res = https_client.request('POST', f"http://{ip}{url}", fields=data)
+        return json.loads(res.data.decode('utf-8'))
+    except Exception as e:
+        debug_log(f"Requesting node failed {e}")
+        return None

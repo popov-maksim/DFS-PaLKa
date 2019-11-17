@@ -1,6 +1,6 @@
 import requests
 import hashlib
-from src.utils import read_token, save_token
+from src.utils import read_token, save_token, request_node
 from src.constants import *
 from src.logger import debug_log
 
@@ -19,7 +19,7 @@ def _auth(params, action):
     
     encrypted_pass = hashlib.md5(password)
     data = {LOGIN_KEY: login, ENCRYPTED_PASS_KEY: encrypted_pass}
-    res = requests.post(f"{NAMENODE_IP}/{action}", json=data)
+    res = request_node(NAMENODE_IP, f"/{action}", data)
 
     if res.ok:
         token = res.json[TOKEN_KEY]
@@ -30,10 +30,15 @@ def _auth(params, action):
         print(msg)
 
 
-def _command(params, action):
+def _command(params, keys, action):
     token = read_token()
 
-    res = requests.post(f"{NAMENODE_IP}/{action}", json={TOKEN_KEY: token})
+    params.append(token)
+    keys.append(TOKEN_KEY)
+
+    params = _get_dict(params, keys)
+
+    res = request_node(NAMENODE_IP, f"/{action}", params)
     debug_log(res.json())
 
     if res.ok:
@@ -41,6 +46,20 @@ def _command(params, action):
     else:
         msg = res.json[MESSAGE_KEY]
         print(msg)
+
+
+def _get_dict(params, keys):
+    assert(len(params) == len(keys))
+
+    res = {}
+    for i in range(len(params)):
+        res[keys[i]] = params[i]
+
+    return res
+
+
+def _check(path):
+    pass
 
 
 def help_command(params=None):
@@ -58,52 +77,87 @@ def login_command(params):
     _auth(params, "login")
 
 
-def init_command(params=None):
-    _command(params, "init")
+def init_command(params=[]):
+    _command(params, [], "init")
 
 
 def fdelete_command(params):
-    _command(params, "fdelete")
+    _command(params, [PATH_KEY], "fdelete")
 
 
 def fcreate_command(params):
-    _command(params, "fcreate")
+    _command(params, [PATH_KEY], "fcreate")
 
 
 def fread_command(params):
-    _command(params, "fread")
+    pass
+    # _command(params, [PATH_KEY], "fread")
 
 
 def fwrite_command(params):
-    _command(params, "fwrite")
+    pass
+    # _command(params, [PATH_KEY], "fwrite")
 
 
 def finfo_command(params):
-    _command(params, "finfo")
+    token = read_token()
+
+    params.append(token)
+    params = _get_dict(params, [PATH_KEY, TOKEN_KEY])
+
+    res = request_node(NAMENODE_IP, "/finfo", params)
+    debug_log(res.json())
+
+    if res.ok:
+        file_size = res.json[FILE_SIZE_KEY]
+        print(f"{params[0]} has size {file_size}")
+    else:
+        msg = res.json[MESSAGE_KEY]
+        print(msg)
 
 
 def fcopy_command(params):
-    _command(params, "fcopy")
+    _command(params, [PATH_KEY, PATH_DESTINATION_KEY], "fcopy")
 
 
 def fmove_command(params):
-    _command(params, "fmove")
+    _command(params, [PATH_KEY, PATH_DESTINATION_KEY], "fmove")
 
 
 def odir_command(params):
-    _command(params, "odir")
+    new_path = params[0]
+
+    if not _check(new_path):
+        print("Forbidden")
+        return
+
+    
 
 
 def rdir_command(params):
-    _command(params, "rdir")
+    token = read_token()
+
+    params.append(token)
+    params = _get_dict(params, [PATH_KEY, TOKEN_KEY])
+
+    res = request_node(NAMENODE_IP, "/rdir", params)
+    debug_log(res.json())
+
+    if res.ok:
+        dir_list = res.json[DIR_LIST_KEY]
+        for l in dir_list:
+            print(f" -- {l}")
+    else:
+        msg = res.json[MESSAGE_KEY]
+        print(msg)
 
 
 def mdir_command(params):
-    _command(params, "mdir")
+    _command(params, [PATH_KEY], "mdir")
 
 
 def ddir_command(params):
-    _command(params, "ddir")
+    _command(params, [PATH_KEY], "ddir")
 
 
 AVAILABLE_COMMANDS = {

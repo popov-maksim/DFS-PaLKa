@@ -57,6 +57,14 @@ def flask_fcreate():
 
     # create new empty file
     try:
+        # create all subdirs
+        all_dirs = file_path.split("/")[:-1]
+        dir_path = ROOT
+        for directory in all_dirs:
+            dir_path = os.path.join(dir_path, directory)
+            if not os.path.exists(dir_path):
+                os.mkdir(dir_path)
+        # create new file there
         with open(file_path, "w"): pass
     except OSError:
         debug_log(f"Creation of the file {file_path} failed")
@@ -126,6 +134,14 @@ def flask_fcopy():
     file_path_dest = get_path(full_file_path_dest)
 
     try:
+        # create all subdirs
+        all_dirs = file_path_dest.split("/")[:-1]
+        dir_path = ROOT
+        for directory in all_dirs:
+            dir_path = os.path.join(dir_path, directory)
+            if not os.path.exists(dir_path):
+                os.mkdir(dir_path)
+        # create copy of file there
         shutil.copyfile(file_path, file_path_dest)
     except OSError:
         debug_log(f"Copying of the file {file_path} failed")
@@ -149,6 +165,14 @@ def flask_fmove():
     file_path_dest = get_path(full_file_path_dest)
 
     try:
+        # create all subdirs
+        all_dirs = file_path_dest.split("/")[:-1]
+        dir_path = ROOT
+        for directory in all_dirs:
+            dir_path = os.path.join(dir_path, directory)
+            if not os.path.exists(dir_path):
+                os.mkdir(dir_path)
+        # move file
         shutil.move(file_path, file_path_dest)
     except OSError:
         debug_log(f"Moving of the file {file_path} failed")
@@ -159,23 +183,21 @@ def flask_fmove():
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
-@application.route("/rdir", methods=['POST'])
-def flask_rdir():
+@application.route("/ddir", methods=['POST'])
+def flask_ddir():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
-    full_file_path_dest = flask.request.form.get(key=FULL_PATH_DESTINATION_KEY, default=None, type=str)
 
-    if not full_file_path or not full_file_path_dest:
+    if not full_file_path:
         data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     file_path = get_path(full_file_path)
-    file_path_dest = get_path(full_file_path_dest)
 
     try:
-        shutil.move(file_path, file_path_dest)
+        shutil.rmtree(file_path)
     except OSError:
-        debug_log(f"Moving of the file {file_path} failed")
-        data = {MESSAGE_KEY: "Failed during file moving."}
+        debug_log(f"Delete the directory {file_path} failed")
+        data = {MESSAGE_KEY: "Failed during dir delete."}
         return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
     
     data = {MESSAGE_KEY: "Success"}
@@ -185,3 +207,4 @@ def flask_rdir():
 if __name__ == "__main__":
     application.debug = True
     application.run()
+    

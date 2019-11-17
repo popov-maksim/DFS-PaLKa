@@ -27,7 +27,7 @@ NAMENODE_IP = "127.0.0.1"
 
 ROOT = "/var/storage"
 
-CURRENT_PATH = "path.txt"
+CURRENT_PATH = "current_path.txt"
 
 try:
     SECRET_KEY = os.getenv('SECRET_KEY')

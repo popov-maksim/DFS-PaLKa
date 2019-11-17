@@ -5,6 +5,18 @@ from src.constants import *
 from src.logger import debug_log
 
 
+def _update_current_path(new_path):
+    with open(CURRENT_PATH, "w") as f:
+        f.write(new_path)
+
+
+def _get_current_path():
+    current_path = None
+    with open(CURRENT_PATH, "r") as f:
+        current_path = f.read().strip()
+    return current_path
+
+
 def _auth(params, action):
     if len(params) < 2:
         print("Specify login and password please.")
@@ -24,6 +36,7 @@ def _auth(params, action):
     if res.ok:
         token = res.json[TOKEN_KEY]
         save_token(token)
+        _update_current_path(f"{login}")
         print("Success!\nYou were logged in.")
     else:
         msg = res.json[MESSAGE_KEY]
@@ -58,10 +71,6 @@ def _get_dict(params, keys):
     return res
 
 
-def _check(path):
-    pass
-
-
 def help_command(params=None):
     print("Available commands:\n")
     for cmd, descript in COMMAND_DESCRIPTIONS.items():
@@ -82,10 +91,24 @@ def init_command(params=[]):
 
 
 def fdelete_command(params):
+    current_path = _get_current_path()
+
+    if params[0][0] == "/":
+        params[0] = params[0][1:]
+    else:    
+        params[0] = current_path + params[0]
+    
     _command(params, [PATH_KEY], "fdelete")
 
 
 def fcreate_command(params):
+    current_path = _get_current_path()
+
+    if params[0][0] == "/":
+        params[0] = params[0][1:]
+    else:    
+        params[0] = current_path + params[0]
+
     _command(params, [PATH_KEY], "fcreate")
 
 
@@ -100,6 +123,13 @@ def fwrite_command(params):
 
 
 def finfo_command(params):
+    current_path = _get_current_path()
+
+    if params[0][0] == "/":
+        params[0] = params[0][1:]
+    else:    
+        params[0] = current_path + params[0]
+
     token = read_token()
 
     params.append(token)
@@ -117,24 +147,73 @@ def finfo_command(params):
 
 
 def fcopy_command(params):
+    current_path = _get_current_path()
+
+    if params[0][0] == "/":
+        params[0] = params[0][1:]
+    else:    
+        params[0] = current_path + params[0]
+
+    if params[1][0] == "/":
+        params[1] = params[1][1:]
+    else:    
+        params[1] = current_path + params[1]
+
     _command(params, [PATH_KEY, PATH_DESTINATION_KEY], "fcopy")
 
 
 def fmove_command(params):
+    current_path = _get_current_path()
+
+    if params[0][0] == "/":
+        params[0] = params[0][1:]
+    else:    
+        params[0] = current_path + params[0]
+
+    if params[1][0] == "/":
+        params[1] = params[1][1:]
+    else:    
+        params[1] = current_path + params[1]
+
     _command(params, [PATH_KEY, PATH_DESTINATION_KEY], "fmove")
 
 
 def odir_command(params):
+    # without relational path only absolute
     new_path = params[0]
+    token = read_token()
 
-    if not _check(new_path):
-        print("Forbidden")
+    current_path = _get_current_path()
+
+    if new_path[0] == "/":
+        new_path = new_path[1:]
+    else:    
+        new_path = current_path + new_path
+
+    if ".." in new_path or "." in new_path:
+        print("Pease use only absolute path")
+        print(f"Your current path is {_get_current_path()}")
         return
 
+    data = { TOKEN_KEY: token, PATH_KEY: new_path }
+    res = request_node(NAMENODE_IP, "/dir_exists", data)
+
+    if res.ok:
+        _update_current_path(f"{new_path}")
+        print(f"Your current path is {new_path}")
+    else:
+        msg = res.json[MESSAGE_KEY]
+        print(msg)
     
 
-
 def rdir_command(params):
+    current_path = _get_current_path()
+
+    if params[0][0] == "/":
+        params[0] = params[0][1:]
+    else:    
+        params[0] = current_path + params[0]
+
     token = read_token()
 
     params.append(token)
@@ -153,10 +232,24 @@ def rdir_command(params):
 
 
 def mdir_command(params):
+    current_path = _get_current_path()
+
+    if params[0][0] == "/":
+        params[0] = params[0][1:]
+    else:    
+        params[0] = current_path + params[0]
+
     _command(params, [PATH_KEY], "mdir")
 
 
 def ddir_command(params):
+    current_path = _get_current_path()
+
+    if params[0][0] == "/":
+        params[0] = params[0][1:]
+    else:    
+        params[0] = current_path + params[0]
+
     _command(params, [PATH_KEY], "ddir")
 
 

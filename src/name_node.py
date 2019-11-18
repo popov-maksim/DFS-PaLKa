@@ -183,7 +183,7 @@ def flask_fread():
         return flask.make_response(flask.jsonify(data), HTTPStatus.GONE)
     node_ip = congestions[0][0]
 
-    data = {NODE_IP_KEY: node_ip}
+    data = {NODE_IP_KEY: node_ip, FULL_PATH_KEY: os.path.join(login, file_path)}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 

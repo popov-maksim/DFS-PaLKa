@@ -19,7 +19,7 @@ FILE_SIZE_KEY = 'file_size'
 EXISTS_KEY = 'exists'
 DIR_LIST_KEY = 'dir_list'
 FORCE_KEY = 'force'
-UPLOADED_FILE = 'uploaded_file'
+BINARY_FILE = 'binary_file'
 
 TOKEN_TTL_MINUTES = 30
 TOKEN_FILE = "token.tk"

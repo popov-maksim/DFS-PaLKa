@@ -108,19 +108,40 @@ def flask_fread():
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     file_path = get_path(full_file_path)
-    # TODO donwnload file
+
+    try:
+        with open(file_path, "rb") as f:
+            binary_file = f.read()
+    except OSError as e:
+        debug_log(e.strerror)
+        data = {MESSAGE_KEY: "Error on storage server"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    data = {BINARY_FILE: binary_file}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
 @application.route("/fwrite", methods=['POST'])
 def flask_fwrite():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
+    binary_file = flask.request.form.get(key=BINARY_FILE, default=None, type=str)
 
-    if not full_file_path:
+    if not full_file_path or not binary_file:
         data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     file_path = get_path(full_file_path)
-    # TODO upload file
+
+    try:
+        with open(file_path, "wb") as f:
+            f.write(binary_file)
+    except OSError as e:
+        debug_log(e.strerror)
+        data = {MESSAGE_KEY: "Error on the server"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    data = {MESSAGE_KEY: "OK"}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
 @application.route("/fcopy", methods=['POST'])

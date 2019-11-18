@@ -72,7 +72,7 @@ def _get_dict(params, keys):
     return res
 
 
-def help_command(params=None):
+def help_command(params):
     print("Available commands:\n")
     for cmd, descript in COMMAND_DESCRIPTIONS.items():
         print(f"-- {cmd}: {descript}")
@@ -87,11 +87,15 @@ def login_command(params):
     _auth(params, "login")
 
 
-def init_command(params=[]):
+def init_command(params):
+    assert (len(params) == 0)
+
     _command(params, [], "init")
 
 
 def fdelete_command(params):
+    assert (len(params) == 1)
+
     current_path = _get_current_path()
 
     if params[0][0] == "/":
@@ -103,6 +107,8 @@ def fdelete_command(params):
 
 
 def fcreate_command(params):
+    assert (len(params) == 1)
+
     current_path = _get_current_path()
 
     if params[0][0] == "/":
@@ -114,6 +120,8 @@ def fcreate_command(params):
 
 
 def fread_command(params):
+    assert (len(params) == 1)
+
     token = read_token()
 
     filename = params[0]
@@ -137,7 +145,7 @@ def fread_command(params):
 
         if storage_res.ok:
             with open(filename, "wb") as f:
-                f.write(storage_res.json[UPLOADED_FILE])
+                f.write(storage_res.json[BINARY_FILE])
             print("Success!")
         else:
             msg = res.json[MESSAGE_KEY]
@@ -148,15 +156,20 @@ def fread_command(params):
 
 
 def fwrite_command(params):
+    assert (len(params) == 1)
+
     token = read_token()
 
-    res = request_node(NAMENODE_IP, "/fwrite", {TOKEN_KEY: token})
+    res = request_node(NAMENODE_IP, "/fwrite", {TOKEN_KEY: token, PATH_KEY: _get_current_path()})
     debug_log(res.json())
 
     if res.ok:
         storage_node_ip = res.json[NODE_IP_KEY]
 
-        storage_res = request_node(storage_node_ip, "/fwrite", {UPLOADED_FILE: open(params[0], "rb")})
+        with open(params[0], "rb") as f:
+            binary_file = f.read()
+        storage_res = request_node(storage_node_ip, "/fwrite", {BINARY_FILE: binary_file,
+                                                                FULL_PATH_KEY: res.json[FULL_PATH_KEY]})
         debug_log(res.json())
 
         if storage_res.ok:
@@ -170,6 +183,8 @@ def fwrite_command(params):
 
 
 def finfo_command(params):
+    assert(len(params) == 1)
+
     current_path = _get_current_path()
 
     if params[0][0] == "/":
@@ -194,6 +209,8 @@ def finfo_command(params):
 
 
 def fcopy_command(params):
+    assert(len(params) == 2)
+
     current_path = _get_current_path()
 
     if params[0][0] == "/":
@@ -210,6 +227,8 @@ def fcopy_command(params):
 
 
 def fmove_command(params):
+    assert(len(params) == 2)
+
     current_path = _get_current_path()
 
     if params[0][0] == "/":
@@ -226,6 +245,8 @@ def fmove_command(params):
 
 
 def odir_command(params):
+    assert(len(params) == 1)
+
     # without relational path only absolute
     new_path = params[0]
     token = read_token()
@@ -242,7 +263,7 @@ def odir_command(params):
         print(f"Your current path is {_get_current_path()}")
         return
 
-    data = { TOKEN_KEY: token, PATH_KEY: new_path }
+    data = {TOKEN_KEY: token, PATH_KEY: new_path}
     res = request_node(NAMENODE_IP, "/dir_exists", data)
 
     if res.ok:
@@ -254,6 +275,8 @@ def odir_command(params):
     
 
 def rdir_command(params):
+    assert(len(params) == 1)
+
     current_path = _get_current_path()
 
     if params[0][0] == "/":
@@ -279,6 +302,8 @@ def rdir_command(params):
 
 
 def mdir_command(params):
+    assert(len(params) == 1)
+
     current_path = _get_current_path()
 
     if params[0][0] == "/":
@@ -290,6 +315,8 @@ def mdir_command(params):
 
 
 def ddir_command(params):
+    assert(len(params) == 1)
+
     current_path = _get_current_path()
 
     if params[0][0] == "/":
@@ -298,6 +325,13 @@ def ddir_command(params):
         params[0] = current_path + params[0]
 
     _command(params, [PATH_KEY], "ddir")
+
+
+def pwd(params):
+    assert(len(params) == 0)
+
+    current_path = _get_current_path()
+    print(f"You at {current_path if current_path else 'YOUR HOME'}")
 
 
 AVAILABLE_COMMANDS = {
@@ -319,7 +353,8 @@ AVAILABLE_COMMANDS = {
 }
 
 COMMAND_DESCRIPTIONS = {
-    "init": "Initialize the client storage on a new system, should remove any existing file in the dfs root directory and return available size.",
+    "init": "Initialize the client storage on a new system, should remove any existing file in the dfs root directory "
+            "and return available size.",
     "fcreate": "Create a new empty file.",
     "fread": "Read any file from DFS (download a file from the DFS to the Client side)",
     "fwrite": "Put any file to DFS (upload a file from the Client side to the DFS)",
@@ -330,10 +365,12 @@ COMMAND_DESCRIPTIONS = {
     "odir": "Change directory",
     "rdir": "Return list of files, which are stored in the directory.",
     "mdir": "Create a new directory.",
-    "ddir": "Delete directory. If the directory contains files the system should ask for confirmation from the user before deletion.",
+    "ddir": "Delete directory. If the directory contains files the system should ask for confirmation from the user"
+            " before deletion.",
     "reg": "Registrate(create) new user",
     "login": "Login as a user",
     "help": "Show available commands",
+    "pwd": "Show current directory",
 }
 
 executor = {
@@ -352,4 +389,5 @@ executor = {
     "reg": reg_command,
     "login": login_command,
     "help": help_command,
+    "pwd": pwd,
 }

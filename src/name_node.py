@@ -183,15 +183,16 @@ def flask_fread():
         return flask.make_response(flask.jsonify(data), HTTPStatus.GONE)
     node_ip = congestions[0][0]
 
-    data = {NODE_IP_KEY: node_ip, FULL_PATH_KEY: os.path.join(login, file_path)}
+    data = {NODE_IP_KEY: node_ip, FULL_PATH_KEY: full_file_path}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
 @application.route("/fwrite", methods=['POST'])
 def flask_fwrite():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
+    file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
 
-    if not token:
+    if not token or not file_path:
         data = {MESSAGE_KEY: f"Missing required parameters: `{TOKEN_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
@@ -207,7 +208,7 @@ def flask_fwrite():
         return flask.make_response(flask.jsonify(data), HTTPStatus.GONE)
     node_ip = congestions[0][0]
 
-    data = {NODE_IP_KEY: node_ip}
+    data = {NODE_IP_KEY: node_ip, FULL_PATH_KEY: os.path.join(login, file_path)}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 

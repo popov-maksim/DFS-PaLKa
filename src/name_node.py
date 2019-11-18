@@ -110,7 +110,7 @@ def flask_init():
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
     data_for_node = {LOGIN_KEY: login}
-    for node_ip in db_node2files.keys():
+    for node_ip in db_congestion.keys():
         res = request_node(node_ip, '/init', data_for_node)
         debug_log(res)
 
@@ -449,6 +449,18 @@ def flask_ddir():
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
+@application.route("/new_node", methods=['POST'])
+@from_subnet_ip
+def flask_new_node():
+    new_node_ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
+    if new_node_ip in db_congestion.keys():
+        debug_log(f"!!!!!!!ERROR!!!!!!!! {new_node_ip} calls /new_node but it's already in the db")
+    else:
+        debug_log(f"{new_node_ip} calls /new_node and added to db")
+    db_congestion.set(new_node_ip, 0)
+    return flask.make_response(flask.jsonify({}), HTTPStatus.OK)
+
+
 def ping_nodes():
     non_responsive_count: Dict[str, int] = {}
     while True:
@@ -513,7 +525,7 @@ def replicate(full_file_path: str):
     source_nodes_ip = db_file2nodes.lrange(full_file_path, 0, -1)
     assert source_nodes_ip
 
-    target_nodes_ip = db_node2files.keys()
+    target_nodes_ip = db_congestion.keys()
     target_nodes_ip = list(set(target_nodes_ip) - set(source_nodes_ip))
 
     congestions = [(node_ip, db_congestion.get(node_ip)) for node_ip in target_nodes_ip]

@@ -5,7 +5,7 @@ import flask
 
 from constants import *
 from logger import debug_log
-from utils import from_subnet_ip
+from utils import request_node, from_subnet_ip
 from os import statvfs
 
 application = flask.Flask(__name__)
@@ -219,6 +219,11 @@ def ping():
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
+def tell_naming_node_im_born():
+    request_node(NAMENODE_IP, '/new_node', {})
+
+
 if __name__ == "__main__":
+    tell_naming_node_im_born()
     application.debug = True
     application.run()

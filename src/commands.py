@@ -1,8 +1,10 @@
-import requests
 import hashlib
 from src.utils import read_token, save_token, request_node
 from src.constants import *
 from src.logger import debug_log
+
+
+START_PATH = ""
 
 
 def _update_current_path(new_path):
@@ -11,7 +13,6 @@ def _update_current_path(new_path):
 
 
 def _get_current_path():
-    current_path = None
     with open(CURRENT_PATH, "r") as f:
         current_path = f.read().strip()
     return current_path
@@ -36,7 +37,7 @@ def _auth(params, action):
     if res.ok:
         token = res.json[TOKEN_KEY]
         save_token(token)
-        _update_current_path(f"{login}")
+        _update_current_path(START_PATH)
         print("Success!\nYou were logged in.")
     else:
         msg = res.json[MESSAGE_KEY]
@@ -106,20 +107,66 @@ def fcreate_command(params):
 
     if params[0][0] == "/":
         params[0] = params[0][1:]
-    else:    
+    else:
         params[0] = current_path + params[0]
 
     _command(params, [PATH_KEY], "fcreate")
 
 
 def fread_command(params):
-    pass
-    # _command(params, [PATH_KEY], "fread")
+    token = read_token()
+
+    filename = params[0]
+
+    current_path = _get_current_path()
+
+    if params[0][0] == "/":
+        params[0] = params[0][1:]
+    else:
+        params[0] = current_path + params[0]
+
+    res = request_node(NAMENODE_IP, "/fread", {TOKEN_KEY: token, PATH_KEY: params[0]})
+    debug_log(res.json())
+
+    if res.ok:
+        storage_node_ip = res.json[NODE_IP_KEY]
+        full_path = res.json[FULL_PATH_KEY]
+
+        storage_res = request_node(storage_node_ip, "/fread", {FULL_PATH_KEY: full_path})
+        debug_log(res.json())
+
+        if storage_res.ok:
+            with open(filename, "wb") as f:
+                f.write(storage_res.json[UPLOADED_FILE])
+            print("Success!")
+        else:
+            msg = res.json[MESSAGE_KEY]
+            print(msg)
+    else:
+        msg = res.json[MESSAGE_KEY]
+        print(msg)
 
 
 def fwrite_command(params):
-    pass
-    # _command(params, [PATH_KEY], "fwrite")
+    token = read_token()
+
+    res = request_node(NAMENODE_IP, "/fwrite", {TOKEN_KEY: token})
+    debug_log(res.json())
+
+    if res.ok:
+        storage_node_ip = res.json[NODE_IP_KEY]
+
+        storage_res = request_node(storage_node_ip, "/fwrite", {UPLOADED_FILE: open(params[0], "rb")})
+        debug_log(res.json())
+
+        if storage_res.ok:
+            print("Success!")
+        else:
+            msg = res.json[MESSAGE_KEY]
+            print(msg)
+    else:
+        msg = res.json[MESSAGE_KEY]
+        print(msg)
 
 
 def finfo_command(params):
@@ -191,7 +238,7 @@ def odir_command(params):
         new_path = current_path + new_path
 
     if ".." in new_path or "." in new_path:
-        print("Pease use only absolute path")
+        print("Please use only absolute path or forward relative")
         print(f"Your current path is {_get_current_path()}")
         return
 

@@ -2,3 +2,5 @@ venv
 .vscode
 .idea
 __pycache__
+log.log
+src/log.log

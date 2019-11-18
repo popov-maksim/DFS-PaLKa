@@ -5,6 +5,8 @@ import flask
 
 from constants import *
 from logger import debug_log
+from utils import from_subnet_ip
+from os import statvfs
 
 application = flask.Flask(__name__)
 
@@ -201,6 +203,19 @@ def flask_ddir():
         return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
 
     data = {MESSAGE_KEY: "Success"}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
+
+
+@application.route("/ping", methods=["POST"])
+@from_subnet_ip
+def ping():
+    try:
+        st = statvfs(ROOT)
+        congestion = f'{(st.f_blocks - st.f_bavail) / st.f_blocks:.2f}'
+    except OSError as e:
+        debug_log(f"statvfs failed {e}")
+        congestion = 0
+    data = {CONGESTION_KEY: congestion}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 

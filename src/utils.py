@@ -9,8 +9,8 @@ import flask
 import jwt
 import urllib3
 
-from src.constants import *
-from src.logger import debug_log
+from constants import *
+from logger import debug_log
 
 https_client = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
 

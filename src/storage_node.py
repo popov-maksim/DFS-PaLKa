@@ -1,10 +1,10 @@
-import flask
-from http import HTTPStatus
-import os
 import shutil
-from src.logger import debug_log
-from src.constants import *
+from http import HTTPStatus
 
+import flask
+
+from constants import *
+from logger import debug_log
 
 application = flask.Flask(__name__)
 
@@ -31,7 +31,6 @@ def flask_init():
             debug_log(f"Deletion of the directory {user_folder} failed")
             data = {MESSAGE_KEY: "The folder is already exists. Couldn't delete it."}
             return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
-
 
     # create user's folder
     try:
@@ -65,7 +64,8 @@ def flask_fcreate():
             if not os.path.exists(dir_path):
                 os.mkdir(dir_path)
         # create new file there
-        with open(file_path, "w"): pass
+        with open(file_path, "w"):
+            pass
     except OSError:
         debug_log(f"Creation of the file {file_path} failed")
         data = {MESSAGE_KEY: "Failed during file creation."}
@@ -147,7 +147,7 @@ def flask_fcopy():
         debug_log(f"Copying of the file {file_path} failed")
         data = {MESSAGE_KEY: "Failed during file copying."}
         return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
-    
+
     data = {MESSAGE_KEY: "Success"}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
@@ -178,7 +178,7 @@ def flask_fmove():
         debug_log(f"Moving of the file {file_path} failed")
         data = {MESSAGE_KEY: "Failed during file moving."}
         return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
-    
+
     data = {MESSAGE_KEY: "Success"}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
@@ -199,7 +199,7 @@ def flask_ddir():
         debug_log(f"Delete the directory {file_path} failed")
         data = {MESSAGE_KEY: "Failed during dir delete."}
         return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
-    
+
     data = {MESSAGE_KEY: "Success"}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
@@ -207,4 +207,3 @@ def flask_ddir():
 if __name__ == "__main__":
     application.debug = True
     application.run()
-    

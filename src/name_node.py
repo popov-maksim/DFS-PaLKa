@@ -13,9 +13,9 @@ from typing import List, Dict
 import flask
 import redis
 
-from src.constants import *
-from src.logger import debug_log
-from src.utils import encode_auth_token, decode_auth_token, request_node, from_subnet_ip
+from constants import *
+from logger import debug_log
+from utils import encode_auth_token, decode_auth_token, request_node, from_subnet_ip
 
 application = flask.Flask(__name__)
 

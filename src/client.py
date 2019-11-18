@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
-import requests
 import sys
-import os
+
 from commands import *
 
 
@@ -18,11 +17,11 @@ def execute(command, params):
         if command in synonyms:
             cmd = base_cmd
             break
-    
+
     if cmd is None:
         print("No such command!")
         return
-    
+
     executor[cmd](params)
 
 
@@ -33,7 +32,7 @@ def main():
         return
 
     execute(args[0], args[1:])
-    
-    
+
+
 if __name__ == "__main__":
     main()

@@ -70,6 +70,8 @@ def flask_reg():
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
     db_auth.set(name=login, value=encrypted_pass)
+
+    init(login)
     return flask.redirect('/login')
 
 
@@ -109,6 +111,13 @@ def flask_init():
         data = {MESSAGE_KEY: "The token is invalid or has expired"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
+    was_initialised_before = init(login)
+
+    data = {MESSAGE_KEY: f"Successfully {'removed all data and re' if was_initialised_before else ''}initialized"}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
+
+
+def init(login):
     data_for_node = {LOGIN_KEY: login}
     for node_ip in db_congestion.keys():
         res = request_node(node_ip, '/init', data_for_node)
@@ -121,9 +130,7 @@ def flask_init():
         db_user2files.delete(full_file_path)
         for node in nodes_containing_file:
             db_node2files.lrem(node, 1, full_file_path)
-
-    data = {MESSAGE_KEY: f"Successfully {'removed all data and re' if was_initialised_before else ''}initialized"}
-    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
+    return was_initialised_before
 
 
 @application.route("/fcreate", methods=['POST'])

@@ -1,12 +1,12 @@
 import shutil
 from http import HTTPStatus
+from os import statvfs
 
 import flask
 
 from constants import *
 from logger import debug_log
 from utils import request_node, from_subnet_ip
-from os import statvfs
 
 application = flask.Flask(__name__)
 
@@ -128,6 +128,59 @@ def flask_fwrite():
 
     if not full_file_path or not binary_file:
         data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
+
+    file_path = get_path(full_file_path)
+
+    try:
+        with open(file_path, "wb") as f:
+            f.write(binary_file)
+    except OSError as e:
+        debug_log(e.strerror)
+        data = {MESSAGE_KEY: "Error on the server"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    data = {FULL_PATH_KEY: full_file_path, FILE_SIZE_KEY: len(binary_file)}
+    request_node(NAMENODE_IP, '/uploaded', data)
+
+    data = {MESSAGE_KEY: "OK"}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
+
+
+@application.route("/replicate", methods=['POST'])
+@from_subnet_ip
+def flask_replicate():
+    full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
+    target_node_ip = flask.request.form.get(key=NODE_IP_KEY, default=None, type=str)
+
+    if not full_file_path or not target_node_ip:
+        data = {MESSAGE_KEY: f"Missing required parameters: `{FULL_PATH_KEY}`, `{NODE_IP_KEY}`"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
+
+    file_path = get_path(full_file_path)
+
+    try:
+        with open(file_path, "rb") as f:
+            binary_file = f.read()
+    except OSError as e:
+        debug_log(e.strerror)
+        data = {MESSAGE_KEY: "Error on storage server"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    data = {FULL_PATH_KEY: full_file_path, BINARY_FILE: binary_file}
+    request_node(target_node_ip, '/save_replication', data)
+
+    return flask.make_response(flask.jsonify({}), HTTPStatus.OK)
+
+
+@application.route("/save_replication", methods=['POST'])
+@from_subnet_ip
+def flask_save_replication():
+    full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
+    binary_file = flask.request.form.get(key=BINARY_FILE, default=None, type=str)
+
+    if not full_file_path or not binary_file:
+        data = {MESSAGE_KEY: f"Missing required parameters: `{FULL_PATH_KEY}`, `{BINARY_FILE}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     file_path = get_path(full_file_path)

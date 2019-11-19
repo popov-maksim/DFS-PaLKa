@@ -493,15 +493,14 @@ def remove_node(node_ip):
 @application.route("/uploaded", methods=['POST'])
 @from_subnet_ip
 def flask_uploaded():
-    file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
-    login = flask.request.form.get(key=LOGIN_KEY, default=None, type=str)
+    full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
     file_size = flask.request.form.get(key=FILE_SIZE_KEY, default=None, type=str)
 
-    if not file_path or not login or not file_size:
-        data = {MESSAGE_KEY: f"Missing required parameters: `{PATH_KEY}`, `{LOGIN_KEY}`, `{FILE_SIZE_KEY}`"}
+    if not full_file_path or not file_size:
+        data = {MESSAGE_KEY: f"Missing required parameters: `{FULL_PATH_KEY}`, `{FILE_SIZE_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
-    full_file_path = os.path.join(login, file_path)
+    login = full_file_path.split(':')[0]
 
     db_file2size.set(full_file_path, file_size)
     db_user2files.set(login, full_file_path)
@@ -540,6 +539,8 @@ def replicate(full_file_path: str):
                                                               NODE_IP_KEY: target_node_ip})
         if res is None:
             debug_log(f"Node {source_nodes_ip[0]} did not response on /replicate")
+        else:
+            db_file2nodes.lpush(full_file_path, target_node_ip)
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ BINARY_FILE = 'binary_file'
 TOKEN_TTL_MINUTES = 30
 TOKEN_FILE = "token.tk"
 
-NAMENODE_IP = "127.0.0.1"
+NAMENODE_IP = "46.101.166.19"
 
 ROOT = "/var/storage"
 

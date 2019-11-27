@@ -11,12 +11,11 @@ import os
 import base64
 import io
 
-
 # from utils import encode_auth_token, decode_auth_token, request_node, from_subnet_ip
 
 application = flask.Flask(__name__)
 
-root = '/home/palka/dfs-PLK/'
+root = '/home/ubuntu/dfs-PLK/'
 BINARY_FILE = 'binary_file'
 
 
@@ -96,10 +95,18 @@ def make_dir():
 #     return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
 #         'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
 #         'f_frsize', 'f_namemax'))
-#
-# def unlink(self, path):
-#     return os.unlink(self._full_path(path))
-#
+
+@application.route("/unlink", methods=["POST"])
+def unlink_file():
+    path = flask.request.form.get(key="path", default=None, type=str)
+    try:
+        print(_full_path(path))
+        os.unlink(_full_path(path))
+        return flask.make_response(flask.jsonify(0))
+    except OSError as e:
+        return flask.make_response(flask.jsonify(e.errno), HTTPStatus.INTERNAL_SERVER_ERROR)
+
+
 # def symlink(self, name, target):
 #     return os.symlink(name, self._full_path(target))
 #
@@ -121,12 +128,17 @@ def open_file():
     flags = flask.request.form.get(key="flags", default=None, type=int)
     full_path = _full_path(path)
     data = os.open(full_path, flags)
-    return flask.make_response(flask.jsonify(data, HTTPStatus.OK))
+    return flask.make_response(flask.jsonify(data))
 
 
-# def create(self, path, mode, fi=None):
-#     full_path = self._full_path(path)
-#     return os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
+@application.route("/create", methods=["POST"])
+def create_file():
+    path = flask.request.form.get(key="path", default=None, type=str)
+    mode = flask.request.form.get(key="mode", default=None, type=int)
+    full_path = _full_path(path)
+    data = os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
+    return flask.make_response(flask.jsonify(data))
+
 
 @application.route("/read", methods=["POST"])
 def read_file():
@@ -147,13 +159,27 @@ def read_file():
 #     full_path = self._full_path(path)
 #     with open(full_path, 'r+') as f:
 #         f.truncate(length)
-#
-# def flush(self, path, fh):
-#     return os.fsync(fh)
-#
-# def release(self, path, fh):
-#     return os.close(fh)
-#
+
+@application.route("/flush", methods=["POST"])
+def flush_file():
+    fh = flask.request.form.get(key="fh", default=None, type=int)
+    try:
+        os.fsync(fh)
+        return flask.make_response(flask.jsonify(0))
+    except OSError as e:
+        return flask.make_response(flask.jsonify(e).errno, HTTPStatus.INTERNAL_SERVER_ERROR)
+
+
+@application.route("/release", methods=["POST"])
+def release():
+    fh = flask.request.form.get(key="fh", default=None, type=int)
+    try:
+        os.close(fh)
+        return flask.make_response(flask.jsonify(0))
+    except OSError as e:
+        return flask.make_response(flask.jsonify(e.errno))
+
+
 # def fsync(self, path, fdatasync, fh):
 #     return self.flush(path, fh)
 

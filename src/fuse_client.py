@@ -6,6 +6,8 @@ from fuse import FUSE, FuseOSError, Operations
 from utils import read_token, save_token, request_node
 from constants import *
 from logger import debug_log
+import flask
+import io
 import base64
 
 
@@ -95,7 +97,10 @@ class Client(Operations):
 
     def utimens(self, path, times=None):
         print('UTIMENS HERE')
-        return os.utime(self._full_path(path), times)
+        full_path = self._full_path(path)
+        res = request_node(NAMENODE_IP, '/utimens', {'path': path})
+        print('utimens', res)
+        return res
 
     # # File methods
     # # ============
@@ -122,15 +127,18 @@ class Client(Operations):
         return res[BINARY_FILE].encode()
 
     def write(self, path, buf, offset, fh):
-        print('WRITE HERE')
-        os.lseek(fh, offset, os.SEEK_SET)
-        return os.write(fh, buf)
+        print('WRITE HERE', path, buf, offset, fh)
+        full_path = self._full_path(path)
+        data = base64.b64encode(buf)
+        res = request_node(NAMENODE_IP, '/write', {'path': full_path, 'buf': data, 'offset': offset, 'fh': fh})
+        print('write', res)
+        return res
 
     def truncate(self, path, length, fh=None):
         print('TRUNC HERE')
-        full_path = self._full_path(path)
-        with open(full_path, 'r+') as f:
-            f.truncate(length)
+        res = request_node(NAMENODE_IP, '/truncate', {'path': path, 'length': length})
+        print('truncate', res)
+        return res
 
     def flush(self, path, fh):
         print('FLUSH HERE', path, fh)

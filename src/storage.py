@@ -116,9 +116,18 @@ def unlink_file():
 # def link(self, target, name):
 #     return os.link(self._full_path(target), self._full_path(name))
 #
-# def utimens(self, path, times=None):
-#     return os.utime(self._full_path(path), times)
-#
+
+@application.route("/utimens", methods=["POST"])
+def utimens():
+    path = flask.request.form.get(key='path', default=None, type=str)
+    times = flask.request.form.get(key='times', default=None, type=int)
+    try:
+        os.utime(self._full_path(path), times)
+        return flask.make_response(flask.jsonify(0))
+    except OSError as e:
+        return flask.make_response(flask.jsonify(e.errno))
+
+
 # # File methods
 # # ============
 
@@ -151,14 +160,34 @@ def read_file():
     return {BINARY_FILE: data}
 
 
-# def write(self, path, buf, offset, fh):
-#     os.lseek(fh, offset, os.SEEK_SET)
-#     return os.write(fh, buf)
-#
-# def truncate(self, path, length, fh=None):
-#     full_path = self._full_path(path)
-#     with open(full_path, 'r+') as f:
-#         f.truncate(length)
+@application.route('/write', methods=['POST'])
+def write_file():
+    data = flask.request.form.get(key='buf', default=None, type=str)
+    buf = base64.b64decode(data)
+    print('buf', data, buf)
+    offset = flask.request.form.get(key='offset', default=None, type=int)
+    fh = flask.request.form.get(key='fh', default=None, type=int)
+    try:
+        os.lseek(fh, offset, os.SEEK_SET)
+        n = os.write(fh, buf)
+        return flask.make_response(flask.jsonify(n))
+    except OSError as e:
+        print('WRITE HAS JUST FAILED')
+        return flask.make_response(flask.jsonify(e.errno), HTTPStatus.INTERNAL_SERVER_ERROR)
+
+
+@application.route('/truncate', methods=['POST'])
+def truncate():
+    path = flask.request.form.get(key='path', default=None, type=str)
+    length = flask.request.form.get(key='length', default=None, type=int)
+    full_path = _full_path(path)
+    try:
+        with open(full_path, 'r+') as f:
+            f.truncate(length)
+        return flask.make_response(flask.jsonify(0))
+    except OSError as e:
+        return flask.make_response(flask.jsonify(e.errno))
+
 
 @application.route("/flush", methods=["POST"])
 def flush_file():

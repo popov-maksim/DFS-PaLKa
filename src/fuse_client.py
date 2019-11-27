@@ -6,6 +6,7 @@ from fuse import FUSE, FuseOSError, Operations
 from utils import read_token, save_token, request_node
 from constants import *
 from logger import debug_log
+import base64
 
 
 class Client(Operations):
@@ -33,32 +34,30 @@ class Client(Operations):
     def readdir(self, path, fh):
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/readdir', {'path': full_path})
-        print(res)
+        print('readdir', res)
         return res
 
     def readlink(self, path):
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/readlink', {'path': full_path})
-        print(res)
+        print('readlink', res)
         return res
 
-    #
     # def mknod(self, path, mode, dev):
     #     return os.mknod(self._full_path(path), mode, dev)
-    #
+
     def rmdir(self, path):
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/rmdir', {'path': full_path})
-        print(res)
+        print('rmdir', res)
         return res
 
-    #
     def mkdir(self, path, mode):
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/mkdir', {'path': full_path, 'mode': mode})
-        print(res)
+        print('mkdir', res)
         return res
-    #
+
     # def statfs(self, path):
     #     full_path = self._full_path(path)
     #     stv = os.statvfs(full_path)
@@ -83,19 +82,22 @@ class Client(Operations):
     #
     # # File methods
     # # ============
-    #
-    # def open(self, path, flags):
-    #     full_path = self._full_path(path)
-    #     return os.open(full_path, flags)
-    #
+
+    def open(self, path, flags):
+        full_path = self._full_path(path)
+        res = request_node(NAMENODE_IP, '/open', {'path': full_path, 'flags': flags})
+        print('open', res)
+        return res[0]
+
     # def create(self, path, mode, fi=None):
     #     full_path = self._full_path(path)
     #     return os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
-    #
-    # def read(self, path, length, offset, fh):
-    #     os.lseek(fh, offset, os.SEEK_SET)
-    #     return os.read(fh, length)
-    #
+
+    def read(self, path, length, offset, fh):
+        full_path = self._full_path(path)
+        res = request_node(NAMENODE_IP, '/read', {'path': full_path, 'length': length, 'offset': offset, 'fh': fh})
+        return res[BINARY_FILE].encode()
+
     # def write(self, path, buf, offset, fh):
     #     os.lseek(fh, offset, os.SEEK_SET)
     #     return os.write(fh, buf)

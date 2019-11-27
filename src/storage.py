@@ -8,12 +8,16 @@ import flask
 import redis
 
 import os
+import base64
+import io
+
 
 # from utils import encode_auth_token, decode_auth_token, request_node, from_subnet_ip
 
 application = flask.Flask(__name__)
 
 root = '/home/palka/dfs-PLK/'
+BINARY_FILE = 'binary_file'
 
 
 def _full_path(partial):
@@ -64,10 +68,10 @@ def read_link(path):
     else:
         data = pathname
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
-    #
-    # def mknod(self, path, mode, dev):
-    #     return os.mknod(self._full_path(path), mode, dev)
-    #
+
+
+# def mknod(self, path, mode, dev):
+#     return os.mknod(self._full_path(path), mode, dev)
 
 
 @application.route("/rmdir", methods=['POST'])
@@ -78,67 +82,80 @@ def remove_dir():
 
 
 @application.route("/mkdir", methods=['POST'])
-def mkdir():
+def make_dir():
     path = flask.request.form.get(key="path", default=None, type=str)
     mode = flask.request.form.get(key="mode", default=None, type=int)
     full_path = _full_path(path)
-    return flask.make_response(flask.jsonify(os.mkdir(full_path)))
+    print('mkdir', path, mode)
+    return flask.make_response(flask.jsonify(os.mkdir(full_path, mode)))
 
 
-    # def statfs(self, path):
-    #     full_path = self._full_path(path)
-    #     stv = os.statvfs(full_path)
-    #     return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
-    #         'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
-    #         'f_frsize', 'f_namemax'))
-    #
-    # def unlink(self, path):
-    #     return os.unlink(self._full_path(path))
-    #
-    # def symlink(self, name, target):
-    #     return os.symlink(name, self._full_path(target))
-    #
-    # def rename(self, old, new):
-    #     return os.rename(self._full_path(old), self._full_path(new))
-    #
-    # def link(self, target, name):
-    #     return os.link(self._full_path(target), self._full_path(name))
-    #
-    # def utimens(self, path, times=None):
-    #     return os.utime(self._full_path(path), times)
-    #
-    # # File methods
-    # # ============
-    #
-    # def open(self, path, flags):
-    #     full_path = self._full_path(path)
-    #     return os.open(full_path, flags)
-    #
-    # def create(self, path, mode, fi=None):
-    #     full_path = self._full_path(path)
-    #     return os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
-    #
-    # def read(self, path, length, offset, fh):
-    #     os.lseek(fh, offset, os.SEEK_SET)
-    #     return os.read(fh, length)
-    #
-    # def write(self, path, buf, offset, fh):
-    #     os.lseek(fh, offset, os.SEEK_SET)
-    #     return os.write(fh, buf)
-    #
-    # def truncate(self, path, length, fh=None):
-    #     full_path = self._full_path(path)
-    #     with open(full_path, 'r+') as f:
-    #         f.truncate(length)
-    #
-    # def flush(self, path, fh):
-    #     return os.fsync(fh)
-    #
-    # def release(self, path, fh):
-    #     return os.close(fh)
-    #
-    # def fsync(self, path, fdatasync, fh):
-    #     return self.flush(path, fh)
+# def statfs(self, path):
+#     full_path = self._full_path(path)
+#     stv = os.statvfs(full_path)
+#     return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
+#         'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
+#         'f_frsize', 'f_namemax'))
+#
+# def unlink(self, path):
+#     return os.unlink(self._full_path(path))
+#
+# def symlink(self, name, target):
+#     return os.symlink(name, self._full_path(target))
+#
+# def rename(self, old, new):
+#     return os.rename(self._full_path(old), self._full_path(new))
+#
+# def link(self, target, name):
+#     return os.link(self._full_path(target), self._full_path(name))
+#
+# def utimens(self, path, times=None):
+#     return os.utime(self._full_path(path), times)
+#
+# # File methods
+# # ============
+
+@application.route("/open", methods=["POST"])
+def open_file():
+    path = flask.request.form.get(key="path", default=None, type=str)
+    flags = flask.request.form.get(key="flags", default=None, type=int)
+    full_path = _full_path(path)
+    data = os.open(full_path, flags)
+    return flask.make_response(flask.jsonify(data, HTTPStatus.OK))
+
+
+# def create(self, path, mode, fi=None):
+#     full_path = self._full_path(path)
+#     return os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
+
+@application.route("/read", methods=["POST"])
+def read_file():
+    path = flask.request.form.get(key="path", default=None, type=str)
+    length = flask.request.form.get(key="length", default=None, type=int)
+    offset = flask.request.form.get(key="offset", default=None, type=int)
+    fh = flask.request.form.get(key="fh", default=None, type=int)
+    os.lseek(fh, offset, os.SEEK_SET)
+    data = os.read(fh, length).decode()
+    return {BINARY_FILE: data}
+
+
+# def write(self, path, buf, offset, fh):
+#     os.lseek(fh, offset, os.SEEK_SET)
+#     return os.write(fh, buf)
+#
+# def truncate(self, path, length, fh=None):
+#     full_path = self._full_path(path)
+#     with open(full_path, 'r+') as f:
+#         f.truncate(length)
+#
+# def flush(self, path, fh):
+#     return os.fsync(fh)
+#
+# def release(self, path, fh):
+#     return os.close(fh)
+#
+# def fsync(self, path, fdatasync, fh):
+#     return self.flush(path, fh)
 
 
 if __name__ == "__main__":

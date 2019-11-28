@@ -1,14 +1,11 @@
-import os
+import base64
 import sys
-import errno
 
 from fuse import FUSE, FuseOSError, Operations
-from utils import read_token, save_token, request_node
+
 from constants import *
 from logger import debug_log
-import flask
-import io
-import base64
+from utils import request_node
 
 
 class Client(Operations):
@@ -27,43 +24,43 @@ class Client(Operations):
         On error (e.g. file doesn't exist) raise an exception,
         this is necessary for mkdir
         """
-        print('getattr', path)
+        debug_log('getattr', path)
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/getattr', {'path': full_path})
         if type(res) != dict:
             raise FuseOSError(res)
-        print('getattr', res)
+        debug_log('getattr', res)
         return res
 
     def readdir(self, path, fh):
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/readdir', {'path': full_path})
-        print('readdir', res)
+        debug_log('readdir', res)
         return res
 
     def readlink(self, path):
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/readlink', {'path': full_path})
-        print('readlink', res)
+        debug_log('readlink', res)
         return res
 
     def mknod(self, path, mode, dev):
-        print('MKNOD HERE')
+        debug_log('MKNOD HERE')
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/readlink', {'path': full_path, 'mode': mode, 'dev': dev})
-        print('mknod', res)
+        debug_log('mknod', res)
         return res
 
     def rmdir(self, path):
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/rmdir', {'path': full_path})
-        print('rmdir', res)
+        debug_log('rmdir', res)
         return res
 
     def mkdir(self, path, mode):
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/mkdir', {'path': full_path, 'mode': mode})
-        print('mkdir', res)
+        debug_log('mkdir', res)
         return res
 
     def statfs(self, path):
@@ -72,89 +69,88 @@ class Client(Operations):
     # def statfs(self, path):
     #     full_path = self._full_path(path)
     #     stv = os.statvfs(full_path)
-    #     return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
+    #     return dict((key, getattr(stv,  key)) for key in ('f_bavail', 'f_bfree',
     #         'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
     #         'f_frsize', 'f_namemax'))
-    #
+
     def unlink(self, path):
-        print('UNLINK HERE', path)
+        debug_log('UNLINK HERE', path)
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/unlink', {'path': path})
-        print('unlink', res)
+        debug_log('unlink', res)
         return res
 
     def symlink(self, name, target):
-        print('SYMLINK')
+        debug_log('SYMLINK')
         return os.symlink(name, self._full_path(target))
 
     def rename(self, old, new):
-        print('RENAME HERE')
+        debug_log('RENAME HERE')
         return os.rename(self._full_path(old), self._full_path(new))
 
     def link(self, target, name):
-        print('LINK HERE')
+        debug_log('LINK HERE')
         return os.link(self._full_path(target), self._full_path(name))
 
     def utimens(self, path, times=None):
-        print('UTIMENS HERE')
+        debug_log('UTIMENS HERE')
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/utimens', {'path': path})
-        print('utimens', res)
+        debug_log('utimens', res)
         return res
 
-    # # File methods
-    # # ============
+    # File methods
+    # ============
 
     def open(self, path, flags):
-        print('OPEN HERE')
+        debug_log('OPEN HERE')
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/open', {'path': full_path, 'flags': flags})
-        print('open', res)
+        debug_log('open', res)
         return res
 
     def create(self, path, mode, fh=None):
-        print('CREATION HERE')
-        print(path, mode, fh)
+        debug_log('CREATION HERE')
+        debug_log(path, mode, fh)
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/create', {'path': full_path, 'mode': mode})
-        print('create', res)
+        debug_log('create', res)
         return res
 
     def read(self, path, length, offset, fh):
-        print('READ HERE')
+        debug_log('READ HERE')
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/read', {'path': full_path, 'length': length, 'offset': offset, 'fh': fh})
         return res[BINARY_FILE].encode()
 
     def write(self, path, buf, offset, fh):
-        print('WRITE HERE', path, buf, offset, fh)
+        debug_log('WRITE HERE', path, buf, offset, fh)
         full_path = self._full_path(path)
         data = base64.b64encode(buf)
         res = request_node(NAMENODE_IP, '/write', {'path': full_path, 'buf': data, 'offset': offset, 'fh': fh})
-        print('write', res)
+        debug_log('write', res)
         return res
 
     def truncate(self, path, length, fh=None):
-        print('TRUNC HERE')
+        debug_log('TRUNC HERE')
         res = request_node(NAMENODE_IP, '/truncate', {'path': path, 'length': length})
-        print('truncate', res)
+        debug_log('truncate', res)
         return res
 
     def flush(self, path, fh):
-        print('FLUSH HERE', path, fh)
-        full_path = self._full_path(path)
+        debug_log('FLUSH HERE', path, fh)
         res = request_node(NAMENODE_IP, '/flush', {'path': path, 'fh': fh})
         return res
 
     def release(self, path, fh):
-        print('RELEASE HERE', path, fh)
+        debug_log('RELEASE HERE', path, fh)
         full_path = self._full_path(path)
         res = request_node(NAMENODE_IP, '/release', {'path': full_path, 'fh': fh})
-        print('release', res)
+        debug_log('release', res)
         return 0
 
     def fsync(self, path, fdatasync, fh):
-        print('FSYNC HERE')
+        debug_log('FSYNC HERE')
         return self.flush(path, fh)
 
 

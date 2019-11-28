@@ -15,5 +15,5 @@ f_handler.setFormatter(formatter)
 _logger.addHandler(f_handler)
 
 
-def debug_log(log_info: str):
+def debug_log(*log_info):
     _logger.debug(log_info)

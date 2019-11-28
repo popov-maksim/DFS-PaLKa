@@ -1,3 +1,6 @@
+import base64
+import io
+import os
 import re
 import threading
 import time
@@ -6,10 +9,6 @@ from typing import List, Dict
 
 import flask
 import redis
-
-import os
-import base64
-import io
 
 # from utils import encode_auth_token, decode_auth_token, request_node, from_subnet_ip
 
@@ -69,8 +68,8 @@ def read_link(path):
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
-# def mknod(self, path, mode, dev):
-#     return os.mknod(self._full_path(path), mode, dev)
+def mknod(self, path, mode, dev):
+    return os.mknod(self._full_path(path), mode, dev)
 
 
 @application.route("/rmdir", methods=['POST'])
@@ -107,15 +106,23 @@ def unlink_file():
         return flask.make_response(flask.jsonify(e.errno), HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
-# def symlink(self, name, target):
-#     return os.symlink(name, self._full_path(target))
-#
-# def rename(self, old, new):
-#     return os.rename(self._full_path(old), self._full_path(new))
-#
-# def link(self, target, name):
-#     return os.link(self._full_path(target), self._full_path(name))
-#
+@application.route("/symlink", methods=["POST"])
+def symlink(self, name, target):
+    return flask.make_response(flask.jsonify(0), HTTPStatus.NOT_IMPLEMENTED)
+    # return os.symlink(name, self._full_path(target))
+
+
+@application.route("/rename", methods=["POST"])
+def rename(self, old, new):
+    return flask.make_response(flask.jsonify(0), HTTPStatus.NOT_IMPLEMENTED)
+    # return os.rename(self._full_path(old), self._full_path(new))
+
+
+@application.route("/link", methods=["POST"])
+def link(self, target, name):
+    return flask.make_response(flask.jsonify(0), HTTPStatus.NOT_IMPLEMENTED)
+    # return os.link(self._full_path(target), self._full_path(name))
+
 
 @application.route("/utimens", methods=["POST"])
 def utimens():
@@ -128,8 +135,8 @@ def utimens():
         return flask.make_response(flask.jsonify(e.errno))
 
 
-# # File methods
-# # ============
+# File methods
+# ============
 
 @application.route("/open", methods=["POST"])
 def open_file():
@@ -209,8 +216,10 @@ def release():
         return flask.make_response(flask.jsonify(e.errno))
 
 
-# def fsync(self, path, fdatasync, fh):
-#     return self.flush(path, fh)
+@application.route("/fsync", methods=["POST"])
+def fsync(self, path, fdatasync, fh):
+    return flask.make_response(flask.jsonify(0), HTTPStatus.NOT_IMPLEMENTED)
+    # return self.flush(path, fh)
 
 
 if __name__ == "__main__":

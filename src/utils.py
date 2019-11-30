@@ -43,7 +43,6 @@ def decode_auth_token(auth_token: str) -> Optional[str]:
 
 
 def read_token():
-    token = None
     with open(TOKEN_FILE, "r") as f:
         token = f.read().strip()
     return token
@@ -51,7 +50,7 @@ def read_token():
 
 def save_token(token):
     with open(TOKEN_FILE, "w") as f:
-        token = f.write(token)
+        f.write(token)
 
 
 def from_subnet_ip(func):
@@ -74,9 +73,10 @@ def log_route(func):
         ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
         debug_log(f"[{file_name}] --> Func <{func.__name__}> called from {ip} | Flask params: {flask.request.form.to_dict()}")
 
-        debug_log(f"[{file_name}] --> Func <{func.__name__}> \033[94m Redis dump BEFORE EXECUTION:\n{dump_all_redis()}\033[0m")
+        debug_log(f"[{file_name}]  *- Func <{func.__name__}> \033[94m Redis dump BEFORE EXECUTION:\n{dump_all_redis()}\033[0m")
         res = func(*args, **kwargs)
-        debug_log(f"[{file_name}] --> Func <{func.__name__}> \033[92m Redis dump BEFORE EXECUTION:\n{dump_all_redis()}\033[0m")
+        debug_log(f"[{file_name}]  *- Func <{func.__name__}> has been executed")
+        debug_log(f"[{file_name}]  *- Func <{func.__name__}> \033[92m Redis dump AFTER EXECUTION:\n{dump_all_redis()}\033[0m")
 
         if isinstance(res, flask.wrappers.Response):
             debug_log(f"[{file_name}] <-- Func <{func.__name__}> responded with ({res._status_code}) {json.loads(res.response[0])}")
@@ -88,7 +88,7 @@ def log_route(func):
 
 
 def dump_all_redis():
-    from name_node import redis_test, db_auth, db_node2files, db_user2files, db_file2nodes, db_file2size, db_congestion
+    from name_node import redis_test, db_auth, db_node2files, db_user2files, db_file2nodes, db_file2size, db_congestion, db_user2folders
     out_strings = []
 
     for db, name in {redis_test: "redis_test", db_auth: "db_auth", db_file2size: "db_file2size", db_congestion: "db_congestion"}.items():
@@ -97,7 +97,7 @@ def dump_all_redis():
             dump[key] = db.get(key)
         out_strings.append(f"{name} {json.dumps(dump, indent=2)}")
 
-    for db, name in {db_node2files: "db_node2files", db_user2files: "db_user2files", db_file2nodes: "db_file2nodes"}.items():
+    for db, name in {db_user2folders: "db_user2folders", db_node2files: "db_node2files", db_user2files: "db_user2files", db_file2nodes: "db_file2nodes"}.items():
         dump = {}
         for key in db.keys():
             dump[key] = db.lrange(key, 0, -1)

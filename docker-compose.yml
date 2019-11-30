@@ -13,6 +13,8 @@ services:
         aliases:
           - namenode
       hostonly:
+    volumes:
+        - ./:/workdir
 
   storagenode:
     depends_on:
@@ -27,6 +29,8 @@ services:
         aliases:
           - storage_1
       hostonly:
+    volumes:
+        - ./:/workdir
 
 networks:
   san:

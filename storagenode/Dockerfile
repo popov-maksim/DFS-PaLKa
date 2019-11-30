@@ -15,11 +15,11 @@ RUN sed -i "s/bind .*/bind 127.0.0.1/g" /etc/redis/redis.conf
 
 
 ADD . /workdir
-ADD ./storagenode /workdir
+#ADD ./storagenode /workdir
 
 RUN echo `ls -1`
 RUN python3 -m venv --clear venv
 RUN python3 -m pip install -r requirements.txt
 
 
-CMD ["bash", "deployment_storagenode.sh"]
+CMD ["bash", "storagenode/deployment_storagenode.sh"]

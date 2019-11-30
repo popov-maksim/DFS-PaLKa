@@ -591,4 +591,4 @@ def replicate(full_file_path: str):
 if __name__ == "__main__":
     t1 = threading.Thread(target=ping_nodes, daemon=True).start()
     application.debug = True
-    application.run()
+    application.run(host="0.0.0.0", port=80)

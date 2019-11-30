@@ -19,18 +19,18 @@ FILE_SIZE_KEY = 'file_size'
 EXISTS_KEY = 'exists'
 DIR_LIST_KEY = 'dir_list'
 FORCE_KEY = 'force'
-BINARY_FILE = 'binary_file'
+FILE = 'file'
 
 TOKEN_TTL_MINUTES = 30
-TOKEN_FILE = "token.tk"
+TOKEN_FILE = 'token.tk'
 
-NAMENODE_IP = "127.0.0.1"
+NAMENODE_IP = '127.0.0.1'
 
-ROOT = "/var/storage"
+ROOT = '/home/dfs'
 
-CURRENT_PATH = "current_path.txt"
+CURRENT_PATH = 'current_path.txt'
 
 try:
     SECRET_KEY = os.getenv('SECRET_KEY')
 except ValueError as e:
-    print("Environment variable `SECRET_KEY` is absent.")
+    print('Environment variable `SECRET_KEY` is absent.')

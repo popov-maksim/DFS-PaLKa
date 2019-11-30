@@ -43,7 +43,6 @@ def decode_auth_token(auth_token: str) -> Optional[str]:
 
 
 def read_token():
-    token = None
     with open(TOKEN_FILE, "r") as f:
         token = f.read().strip()
     return token
@@ -51,7 +50,7 @@ def read_token():
 
 def save_token(token):
     with open(TOKEN_FILE, "w") as f:
-        token = f.write(token)
+        f.write(token)
 
 
 def from_subnet_ip(func):
@@ -106,9 +105,9 @@ def dump_all_redis():
     return '\n'.join(out_strings)
 
 
-def request_node(ip, url, data):
+def request_node(ip, url, data, files=None):
     try:
-        res = https_client.request('POST', f"http://{ip}{url}", fields=data)
+        res = https_client.request('POST', f"http://{ip}{url}", fields=data, files=files)
         return json.loads(res.data.decode('utf-8'))
     except Exception as e:
         debug_log(f"Requesting node failed {e}")

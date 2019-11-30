@@ -3,6 +3,7 @@ from http import HTTPStatus
 from os import statvfs
 
 import flask
+import codecs
 
 from constants import *
 from logger import debug_log
@@ -114,38 +115,40 @@ def flask_fread():
     file_path = get_path(full_file_path)
 
     try:
-        with open(file_path, "rb") as f:
-            binary_file = f.read()
+        with codecs.open(file_path, "rb") as f:
+            file_data = f.read()
     except OSError as e:
         debug_log(e.strerror)
         data = {MESSAGE_KEY: "Error on storage server"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
 
-    data = {BINARY_FILE: binary_file}
-    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
+    response = flask.make_response()
+    response.headers['status'] = HTTPStatus.OK
+    response.data = file_data
+
+    return response
 
 
 @application.route("/fwrite", methods=['POST'])
 @log_route
 def flask_fwrite():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
-    binary_file = flask.request.form.get(key=BINARY_FILE, default=None, type=str)
+    uploaded_file = flask.request.files[FILE]
 
-    if not full_file_path or not binary_file:
+    if not full_file_path or not uploaded_file:
         data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     file_path = get_path(full_file_path)
 
     try:
-        with open(file_path, "wb") as f:
-            f.write(binary_file)
+        uploaded_file.save(file_path)
     except OSError as e:
         debug_log(e.strerror)
         data = {MESSAGE_KEY: "Error on the server"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
 
-    data = {FULL_PATH_KEY: full_file_path, FILE_SIZE_KEY: len(binary_file)}
+    data = {FULL_PATH_KEY: full_file_path, FILE_SIZE_KEY: len(uploaded_file)}
     request_node(NAMENODE_IP, '/uploaded', data)
 
     data = {MESSAGE_KEY: "OK"}

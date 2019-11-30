@@ -15,7 +15,7 @@ import redis
 
 from constants import *
 from logger import debug_log
-from utils import encode_auth_token, decode_auth_token, request_node, from_subnet_ip
+from utils import encode_auth_token, decode_auth_token, request_node, from_subnet_ip, log_route
 
 application = flask.Flask(__name__)
 
@@ -48,6 +48,7 @@ db_congestion.set_response_callback('GET', float)
 
 
 @application.route("/test", methods=['POST'])
+@log_route
 def test():
     param = flask.request.form.get(key='param_1', default=228, type=int)
     redis_test.set(name='key_1', value=param)
@@ -57,6 +58,7 @@ def test():
 
 
 @application.route("/reg", methods=['POST'])
+@log_route
 def flask_reg():
     login = flask.request.form.get(key=LOGIN_KEY, default=None, type=str)
     encrypted_pass = flask.request.form.get(key=ENCRYPTED_PASS_KEY, default=None, type=str)
@@ -76,6 +78,7 @@ def flask_reg():
 
 
 @application.route("/login", methods=['POST'])
+@log_route
 def flask_login():
     login = flask.request.form.get(key=LOGIN_KEY, default=None, type=str)
     encrypted_pass = flask.request.form.get(key=ENCRYPTED_PASS_KEY, default=None, type=str)
@@ -99,6 +102,7 @@ def flask_login():
 
 
 @application.route("/init", methods=['POST'])
+@log_route
 def flask_init():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
 
@@ -134,6 +138,7 @@ def init(login):
 
 
 @application.route("/fcreate", methods=['POST'])
+@log_route
 def flask_fcreate():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -160,6 +165,7 @@ def flask_fcreate():
         debug_log(f"/fcreate - storage node {node_ip} response: {res}")
         db_node2files.lpush(node_ip, full_file_path)
 
+    db_user2files.lpush(login, full_file_path)
     db_file2nodes.lpush(full_file_path, *nodes)
     db_file2size.set(full_file_path, 0)
 
@@ -168,6 +174,7 @@ def flask_fcreate():
 
 
 @application.route("/fread", methods=['POST'])
+@log_route
 def flask_fread():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -195,6 +202,7 @@ def flask_fread():
 
 
 @application.route("/fwrite", methods=['POST'])
+@log_route
 def flask_fwrite():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -220,6 +228,7 @@ def flask_fwrite():
 
 
 @application.route("/fdelete", methods=['POST'])
+@log_route
 def flask_fdelete():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -255,6 +264,7 @@ def flask_fdelete():
 
 
 @application.route("/fcopy", methods=['POST'])
+@log_route
 def flask_fcopy():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -277,12 +287,19 @@ def flask_fcopy():
                                                FULL_PATH_DESTINATION_KEY: full_file_destination_path})
         if res is None:
             debug_log(f"Node {node_ip} did not response on /fcopy")
+        else:
+            db_node2files.lpush(node_ip, 0, full_file_destination_path)
+            db_file2nodes.lpush(full_file_destination_path, 0, node_ip)
+
+    db_user2files.lpush(login, 0, full_file_destination_path)
+    db_file2size.set(full_file_destination_path, db_file2size.get(full_file_path))
 
     data = {MESSAGE_KEY: f"Successfully copied the file"}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
 @application.route("/fmove", methods=['POST'])
+@log_route
 def flask_fmove():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -305,12 +322,25 @@ def flask_fmove():
                                                FULL_PATH_DESTINATION_KEY: full_file_destination_path})
         if res is None:
             debug_log(f"Node {node_ip} did not response on /fmove")
+        else:
+            db_node2files.lrem(node_ip, 0, full_file_path)
+            db_node2files.lpush(node_ip, 0, full_file_destination_path)
+
+            db_file2nodes.lrem(full_file_path, 0, node_ip)
+            db_file2nodes.lpush(full_file_destination_path, 0, node_ip)
+
+    db_user2files.lrem(login, 0, full_file_path)
+    db_user2files.lpush(login, 0, full_file_destination_path)
+
+    db_file2size.set(full_file_destination_path, db_file2size.get(full_file_path))
+    db_file2size.delete(full_file_path)
 
     data = {MESSAGE_KEY: f"Successfully moved the file"}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
 @application.route("/finfo", methods=['POST'])
+@log_route
 def flask_finfo():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -332,6 +362,7 @@ def flask_finfo():
 
 
 @application.route("/dir_exists", methods=['POST'])
+@log_route
 def flask_dir_exists():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -355,6 +386,7 @@ def flask_dir_exists():
 
 
 @application.route("/rdir", methods=['POST'])
+@log_route
 def flask_rdir():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -384,6 +416,7 @@ def flask_rdir():
 
 
 @application.route("/mdir", methods=['POST'])
+@log_route
 def flask_mdir():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -407,6 +440,7 @@ def flask_mdir():
 
 
 @application.route("/ddir", methods=['POST'])
+@log_route
 def flask_ddir():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -458,6 +492,7 @@ def flask_ddir():
 
 
 @application.route("/new_node", methods=['POST'])
+@log_route
 @from_subnet_ip
 def flask_new_node():
     new_node_ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
@@ -498,6 +533,7 @@ def remove_node(node_ip):
 
 
 @application.route("/uploaded", methods=['POST'])
+@log_route
 @from_subnet_ip
 def flask_uploaded():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
@@ -521,6 +557,7 @@ def flask_uploaded():
         if res is None:
             debug_log(f"Node {node_ip} did not response on /fdelete")
         db_node2files.lrem(node_ip, 0, full_file_path)
+        db_file2nodes.lrem(full_file_path, 0, node_ip)
 
     replicate(full_file_path=full_file_path)
 
@@ -548,9 +585,10 @@ def replicate(full_file_path: str):
             debug_log(f"Node {source_nodes_ip[0]} did not response on /replicate")
         else:
             db_file2nodes.lpush(full_file_path, target_node_ip)
+            db_node2files.lpush(target_node_ip, full_file_path)
 
 
 if __name__ == "__main__":
-    t1 = threading.Thread(target=ping_nodes).start()
+    t1 = threading.Thread(target=ping_nodes, daemon=True).start()
     application.debug = True
     application.run()

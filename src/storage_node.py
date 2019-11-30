@@ -6,7 +6,7 @@ import flask
 
 from constants import *
 from logger import debug_log
-from utils import request_node, from_subnet_ip
+from utils import request_node, from_subnet_ip, log_route
 
 application = flask.Flask(__name__)
 
@@ -16,6 +16,7 @@ def get_path(path):
 
 
 @application.route("/init", methods=['POST'])
+@log_route
 def flask_init():
     login = flask.request.form.get(key=LOGIN_KEY, default=None, type=str)
 
@@ -47,6 +48,7 @@ def flask_init():
 
 
 @application.route("/fcreate", methods=['POST'])
+@log_route
 def flask_fcreate():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
 
@@ -78,6 +80,7 @@ def flask_fcreate():
 
 
 @application.route("/fdelete", methods=['POST'])
+@log_route
 def flask_fdelete():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
 
@@ -100,6 +103,7 @@ def flask_fdelete():
 
 
 @application.route("/fread", methods=['POST'])
+@log_route
 def flask_fread():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
 
@@ -122,6 +126,7 @@ def flask_fread():
 
 
 @application.route("/fwrite", methods=['POST'])
+@log_route
 def flask_fwrite():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
     binary_file = flask.request.form.get(key=BINARY_FILE, default=None, type=str)
@@ -148,6 +153,7 @@ def flask_fwrite():
 
 
 @application.route("/replicate", methods=['POST'])
+@log_route
 @from_subnet_ip
 def flask_replicate():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
@@ -174,6 +180,7 @@ def flask_replicate():
 
 
 @application.route("/save_replication", methods=['POST'])
+@log_route
 @from_subnet_ip
 def flask_save_replication():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
@@ -198,6 +205,7 @@ def flask_save_replication():
 
 
 @application.route("/fcopy", methods=['POST'])
+@log_route
 def flask_fcopy():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
     full_file_path_dest = flask.request.form.get(key=FULL_PATH_DESTINATION_KEY, default=None, type=str)
@@ -229,6 +237,7 @@ def flask_fcopy():
 
 
 @application.route("/fmove", methods=['POST'])
+@log_route
 def flask_fmove():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
     full_file_path_dest = flask.request.form.get(key=FULL_PATH_DESTINATION_KEY, default=None, type=str)
@@ -260,6 +269,7 @@ def flask_fmove():
 
 
 @application.route("/ddir", methods=['POST'])
+@log_route
 def flask_ddir():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
 
@@ -281,6 +291,7 @@ def flask_ddir():
 
 
 @application.route("/ping", methods=["POST"])
+@log_route
 @from_subnet_ip
 def ping():
     try:

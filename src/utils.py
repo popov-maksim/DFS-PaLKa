@@ -13,6 +13,7 @@ from constants import *
 from logger import debug_log
 
 https_client = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
+dump_redis = True
 
 
 def encode_auth_token(login: str) -> str:
@@ -64,6 +65,45 @@ def from_subnet_ip(func):
         return flask.make_response(flask.jsonify({MESSAGE_KEY: "Who are you? GTFO!"}), HTTPStatus.FORBIDDEN)
 
     return wrapped_function
+
+
+def log_route(func):
+    @functools.wraps(func)
+    def wrapped_function(*args, **kwargs):
+        file_name = os.path.basename(func.__globals__['__file__'])
+        ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
+        debug_log(f"[{file_name}] --> Func <{func.__name__}> called from {ip} | Flask params: {flask.request.form.to_dict()}")
+
+        debug_log(f"[{file_name}] --> Func <{func.__name__}> \033[94m Redis dump BEFORE EXECUTION:\n{dump_all_redis()}\033[0m")
+        res = func(*args, **kwargs)
+        debug_log(f"[{file_name}] --> Func <{func.__name__}> \033[92m Redis dump BEFORE EXECUTION:\n{dump_all_redis()}\033[0m")
+
+        if isinstance(res, flask.wrappers.Response):
+            debug_log(f"[{file_name}] <-- Func <{func.__name__}> responded with ({res._status_code}) {json.loads(res.response[0])}")
+        else:
+            debug_log(f"[{file_name}] <-- Func <{func.__name__}> returned non flask_response? {type(res)}")
+        return res
+
+    return wrapped_function
+
+
+def dump_all_redis():
+    from name_node import redis_test, db_auth, db_node2files, db_user2files, db_file2nodes, db_file2size, db_congestion
+    out_strings = []
+
+    for db, name in {redis_test: "redis_test", db_auth: "db_auth", db_file2size: "db_file2size", db_congestion: "db_congestion"}.items():
+        dump = {}
+        for key in db.keys():
+            dump[key] = db.get(key)
+        out_strings.append(f"{name} {json.dumps(dump, indent=2)}")
+
+    for db, name in {db_node2files: "db_node2files", db_user2files: "db_user2files", db_file2nodes: "db_file2nodes"}.items():
+        dump = {}
+        for key in db.keys():
+            dump[key] = db.lrange(key, 0, -1)
+        out_strings.append(f"{name} {json.dumps(dump, indent=2)}")
+
+    return '\n'.join(out_strings)
 
 
 def request_node(ip, url, data):

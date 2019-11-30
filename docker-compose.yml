@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  namenode:
+  manager:
     build:
       context: .
       dockerfile: namenode/Dockerfile
@@ -18,7 +18,7 @@ services:
 
   storagenode:
     depends_on:
-      - namenode
+      - manager
     build:
       context: .
       dockerfile: storagenode/Dockerfile

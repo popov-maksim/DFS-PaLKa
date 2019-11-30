@@ -106,9 +106,9 @@ def dump_all_redis():
     return '\n'.join(out_strings)
 
 
-def request_node(ip, url, data):
+def request_node(ip, url, data, files=None):
     try:
-        res = https_client.request('POST', f"http://{ip}{url}", fields=data)
+        res = https_client.request('POST', f"http://{ip}{url}", fields=data, files=files)
         return json.loads(res.data.decode('utf-8'))
     except Exception as e:
         debug_log(f"Requesting node failed {e}")

@@ -8,6 +8,7 @@ START_PATH = ""
 
 
 def _update_current_path(new_path):
+    # saving user's work directory
     with open(CURRENT_PATH, "w") as f:
         f.write(new_path)
 
@@ -18,7 +19,33 @@ def _get_current_path():
     return current_path
 
 
+def _get_path(path):
+    current_path = _get_current_path()
+
+    if path[0] == "/":
+        # absolute path to user's home directory
+        path = path[1:]
+    else:
+        # relative path to current path
+        path = os.path.join(current_path, path)
+
+    return path
+
+
+def _dir_exists(path):
+    token = read_token()
+
+    data = {TOKEN_KEY: token, PATH_KEY: path}
+    res = request_node(NAMENODE_IP, "/dir_exists", data)
+
+    if res.ok:
+        return True
+    else:
+        return False
+
+
 def _auth(params, action):
+    # login and registration with getting token
     if len(params) < 2:
         print("Specify login and password please.")
         return
@@ -45,6 +72,7 @@ def _auth(params, action):
 
 
 def _command(params, keys, action):
+    # executing command with token
     token = read_token()
 
     params.append(token)
@@ -88,50 +116,30 @@ def login_command(params):
 
 
 def init_command(params):
-    assert (len(params) == 0)
-
     _command(params, [], "init")
 
 
 def fdelete_command(params):
-    assert (len(params) == 1)
+    # getting right path
+    params[0] = _get_path(params[0])
 
-    current_path = _get_current_path()
-
-    if params[0][0] == "/":
-        params[0] = params[0][1:]
-    else:    
-        params[0] = current_path + params[0]
-    
     _command(params, [PATH_KEY], "fdelete")
 
 
 def fcreate_command(params):
-    assert (len(params) == 1)
-
-    current_path = _get_current_path()
-
-    if params[0][0] == "/":
-        params[0] = params[0][1:]
-    else:
-        params[0] = current_path + params[0]
+    # getting right path
+    params[0] = _get_path(params[0])
 
     _command(params, [PATH_KEY], "fcreate")
 
 
 def fread_command(params):
-    assert (len(params) == 1)
-
     token = read_token()
 
-    filename = params[0]
+    filename = os.path.basename(params[0])
 
-    current_path = _get_current_path()
-
-    if params[0][0] == "/":
-        params[0] = params[0][1:]
-    else:
-        params[0] = current_path + params[0]
+    # getting right path
+    params[0] = _get_path(params[0])
 
     res = request_node(NAMENODE_IP, "/fread", {TOKEN_KEY: token, PATH_KEY: params[0]})
     debug_log(res.json())
@@ -143,39 +151,40 @@ def fread_command(params):
         storage_res = request_node(storage_node_ip, "/fread", {FULL_PATH_KEY: full_path})
         debug_log(res.json())
 
-        if storage_res.ok:
+        if storage_res.headers['status']:
+            file_data = storage_res.data
             with open(filename, "wb") as f:
-                f.write(storage_res.json[BINARY_FILE])
+                f.write(file_data)
             print("Success!")
         else:
-            msg = res.json[MESSAGE_KEY]
-            print(msg)
+            print("Unsuccessful")
     else:
         msg = res.json[MESSAGE_KEY]
         print(msg)
 
 
 def fwrite_command(params):
-    assert (len(params) == 1)
-
     token = read_token()
 
-    res = request_node(NAMENODE_IP, "/fwrite", {TOKEN_KEY: token, PATH_KEY: _get_current_path()})
+    filename = params[0]
+
+    # getting right path
+    params[0] = _get_path(os.path.basename(params[0]))
+
+    res = request_node(NAMENODE_IP, "/fwrite", {TOKEN_KEY: token, PATH_KEY: params[0]})
     debug_log(res.json())
 
     if res.ok:
         storage_node_ip = res.json[NODE_IP_KEY]
 
-        with open(params[0], "rb") as f:
-            binary_file = f.read()
-        storage_res = request_node(storage_node_ip, "/fwrite", {BINARY_FILE: binary_file,
-                                                                FULL_PATH_KEY: res.json[FULL_PATH_KEY]})
+        storage_res = request_node(storage_node_ip, "/fwrite", {FULL_PATH_KEY: res.json[FULL_PATH_KEY]},
+                                   [(FILE, (filename, open(filename, 'rb'), 'application/octet'))])
         debug_log(res.json())
 
         if storage_res.ok:
             print("Success!")
         else:
-            msg = res.json[MESSAGE_KEY]
+            msg = storage_res.json[MESSAGE_KEY]
             print(msg)
     else:
         msg = res.json[MESSAGE_KEY]
@@ -183,14 +192,8 @@ def fwrite_command(params):
 
 
 def finfo_command(params):
-    assert(len(params) == 1)
-
-    current_path = _get_current_path()
-
-    if params[0][0] == "/":
-        params[0] = params[0][1:]
-    else:    
-        params[0] = current_path + params[0]
+    # getting right path
+    params[0] = _get_path(params[0])
 
     token = read_token()
 
@@ -209,54 +212,30 @@ def finfo_command(params):
 
 
 def fcopy_command(params):
-    assert(len(params) == 2)
+    # getting right path
+    params[0] = _get_path(params[0])
 
-    current_path = _get_current_path()
-
-    if params[0][0] == "/":
-        params[0] = params[0][1:]
-    else:    
-        params[0] = current_path + params[0]
-
-    if params[1][0] == "/":
-        params[1] = params[1][1:]
-    else:    
-        params[1] = current_path + params[1]
+    # getting right path
+    params[1] = _get_path(params[1])
 
     _command(params, [PATH_KEY, PATH_DESTINATION_KEY], "fcopy")
 
 
 def fmove_command(params):
-    assert(len(params) == 2)
+    # getting right path
+    params[0] = _get_path(params[0])
 
-    current_path = _get_current_path()
-
-    if params[0][0] == "/":
-        params[0] = params[0][1:]
-    else:    
-        params[0] = current_path + params[0]
-
-    if params[1][0] == "/":
-        params[1] = params[1][1:]
-    else:    
-        params[1] = current_path + params[1]
+    # getting right path
+    params[1] = _get_path(params[1])
 
     _command(params, [PATH_KEY, PATH_DESTINATION_KEY], "fmove")
 
 
 def odir_command(params):
-    assert(len(params) == 1)
-
-    # without relational path only absolute
-    new_path = params[0]
     token = read_token()
 
-    current_path = _get_current_path()
-
-    if new_path[0] == "/":
-        new_path = new_path[1:]
-    else:    
-        new_path = current_path + new_path
+    # getting right path
+    new_path = _get_path(params[0])
 
     if ".." in new_path or "." in new_path:
         print("Please use only absolute path or forward relative")
@@ -275,14 +254,8 @@ def odir_command(params):
     
 
 def rdir_command(params):
-    assert(len(params) == 1)
-
-    current_path = _get_current_path()
-
-    if params[0][0] == "/":
-        params[0] = params[0][1:]
-    else:    
-        params[0] = current_path + params[0]
+    # getting right path
+    params[0] = _get_path(params[0])
 
     token = read_token()
 
@@ -302,34 +275,20 @@ def rdir_command(params):
 
 
 def mdir_command(params):
-    assert(len(params) == 1)
-
-    current_path = _get_current_path()
-
-    if params[0][0] == "/":
-        params[0] = params[0][1:]
-    else:    
-        params[0] = current_path + params[0]
+    # getting right path
+    params[0] = _get_path(params[0])
 
     _command(params, [PATH_KEY], "mdir")
 
 
 def ddir_command(params):
-    assert(len(params) == 1)
-
-    current_path = _get_current_path()
-
-    if params[0][0] == "/":
-        params[0] = params[0][1:]
-    else:    
-        params[0] = current_path + params[0]
+    # getting right path
+    params[0] = _get_path(params[0])
 
     _command(params, [PATH_KEY], "ddir")
 
 
 def pwd(params):
-    assert(len(params) == 0)
-
     current_path = _get_current_path()
     print(f"You at {current_path if current_path else 'YOUR HOME'}")
 

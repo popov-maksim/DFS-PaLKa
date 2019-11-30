@@ -314,4 +314,4 @@ def tell_naming_node_im_born():
 if __name__ == "__main__":
     tell_naming_node_im_born()
     application.debug = True
-    application.run()
+    application.run(host="0.0.0.0", port=80)

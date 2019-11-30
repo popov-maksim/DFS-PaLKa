@@ -1,7 +1,7 @@
 import ipaddress
 import os
 
-SUBNET = ipaddress.ip_network('127.0.0.0/24')
+SUBNET = ipaddress.ip_network('192.168.77.0/24')
 REPLICATION_FACTOR = 3
 MAX_PING_TRIES = 5
 
@@ -24,7 +24,7 @@ FILE = 'file'
 TOKEN_TTL_MINUTES = 30
 TOKEN_FILE = 'token.tk'
 
-NAMENODE_IP = '127.0.0.1'
+NAMENODE_IP = "namenode"
 
 ROOT = '/home/dfs'
 

@@ -1,0 +1,42 @@
+version: '3'
+
+services:
+  namenode:
+    build:
+      context: .
+      dockerfile: namenode/Dockerfile
+    ports:
+      - "8080:80"
+    networks:
+      san:
+        ipv4_address: 192.168.77.3
+        aliases:
+          - namenode
+      hostonly:
+    volumes:
+        - ./:/workdir
+
+  storagenode:
+    depends_on:
+      - namenode
+    build:
+      context: .
+      dockerfile: storagenode/Dockerfile
+    ports:
+      - "8081:80"
+    networks:
+      san:
+        aliases:
+          - storage_1
+      hostonly:
+    volumes:
+        - ./:/workdir
+
+networks:
+  san:
+    internal: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.77.0/24
+  hostonly:

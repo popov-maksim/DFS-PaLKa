@@ -52,7 +52,7 @@ db_congestion.set_response_callback('GET', float)
 
 
 @application.route("/test", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 def test():
     param = flask.request.form.get(key='param_1', default=228, type=int)
     redis_test.set(name='key_1', value=param)
@@ -62,7 +62,7 @@ def test():
 
 
 @application.route("/reg", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 def flask_reg():
     login = flask.request.form.get(key=LOGIN_KEY, default=None, type=str)
     encrypted_pass = flask.request.form.get(key=ENCRYPTED_PASS_KEY, default=None, type=str)
@@ -82,7 +82,7 @@ def flask_reg():
 
 
 @application.route("/login", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 def flask_login():
     login = flask.request.form.get(key=LOGIN_KEY, default=None, type=str)
     encrypted_pass = flask.request.form.get(key=ENCRYPTED_PASS_KEY, default=None, type=str)
@@ -106,7 +106,7 @@ def flask_login():
 
 
 @application.route("/init", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 def flask_init():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
 
@@ -144,7 +144,7 @@ def init(login):
 
 
 @application.route("/fcreate", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 def flask_fcreate():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -184,7 +184,7 @@ def flask_fcreate():
 
 
 @application.route("/fread", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 def flask_fread():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -216,7 +216,7 @@ def flask_fread():
 
 
 @application.route("/fwrite", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 def flask_fwrite():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -248,7 +248,7 @@ def flask_fwrite():
 
 
 @application.route("/fdelete", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 def flask_fdelete():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -284,7 +284,7 @@ def flask_fdelete():
 
 
 @application.route("/fcopy", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 def flask_fcopy():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -323,7 +323,7 @@ def flask_fcopy():
 
 
 @application.route("/fmove", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 def flask_fmove():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -368,7 +368,7 @@ def flask_fmove():
 
 
 @application.route("/finfo", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 def flask_finfo():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     file_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -391,7 +391,7 @@ def flask_finfo():
 
 
 # @application.route("/dir_exists", methods=['POST'])
-# @log_route
+# @log_route(dump_redis=True)
 # def flask_dir_exists():
 #     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
 #     dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -415,7 +415,7 @@ def flask_finfo():
 
 
 @application.route("/rdir", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 def flask_rdir():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -449,7 +449,7 @@ def flask_rdir():
 
 
 @application.route("/mdir", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 def flask_mdir():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -478,7 +478,7 @@ def flask_mdir():
 
 # todo
 # @application.route("/ddir", methods=['POST'])
-# @log_route
+# @log_route(dump_redis=True)
 # def flask_ddir():
 #     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
 #     dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
@@ -530,7 +530,7 @@ def flask_mdir():
 
 
 @application.route("/new_node", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 @from_subnet_ip
 def flask_new_node():
     new_node_ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
@@ -542,9 +542,9 @@ def flask_new_node():
     return flask.make_response(flask.jsonify({}), HTTPStatus.OK)
 
 
-def ping_nodes():
-    non_responsive_count: Dict[str, int] = {}
-    while True:
+def periodically_ping_nodes():
+    @log_route(dump_redis=True, non_flask=True)
+    def ping_nodes():
         for node_ip in db_congestion.keys():
             if node_ip not in non_responsive_count:
                 non_responsive_count[node_ip] = 0
@@ -558,6 +558,10 @@ def ping_nodes():
             else:
                 debug_log(f"Pinging node {node_ip} - {res}")
                 db_congestion.set(node_ip, res[CONGESTION_KEY])
+
+    non_responsive_count: Dict[str, int] = {}
+    while True:
+        ping_nodes()
         time.sleep(2)
 
 
@@ -571,7 +575,7 @@ def remove_node(node_ip):
 
 
 @application.route("/uploaded", methods=['POST'])
-@log_route
+@log_route(dump_redis=True)
 @from_subnet_ip
 def flask_uploaded():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
@@ -603,6 +607,7 @@ def flask_uploaded():
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
+@log_route(dump_redis=True, non_flask=True)
 def replicate(full_file_path: str):
     source_nodes_ip = db_file2nodes.lrange(full_file_path, 0, -1)
     assert source_nodes_ip
@@ -627,6 +632,6 @@ def replicate(full_file_path: str):
 
 
 if __name__ == "__main__":
-    t1 = threading.Thread(target=ping_nodes, daemon=True).start()
-    application.debug = True
+    t1 = threading.Thread(target=periodically_ping_nodes, daemon=True).start()
+    # application.debug = True
     application.run(host="0.0.0.0", port=80)

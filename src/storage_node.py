@@ -17,7 +17,7 @@ def get_path(path):
 
 
 @application.route("/init", methods=['POST'])
-@log_route
+@log_route()
 def flask_init():
     login = flask.request.form.get(key=LOGIN_KEY, default=None, type=str)
 
@@ -49,7 +49,7 @@ def flask_init():
 
 
 @application.route("/fcreate", methods=['POST'])
-@log_route
+@log_route()
 def flask_fcreate():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
 
@@ -81,7 +81,7 @@ def flask_fcreate():
 
 
 @application.route("/fdelete", methods=['POST'])
-@log_route
+@log_route()
 def flask_fdelete():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
 
@@ -104,7 +104,7 @@ def flask_fdelete():
 
 
 @application.route("/fread", methods=['POST'])
-@log_route
+@log_route()
 def flask_fread():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
 
@@ -130,7 +130,7 @@ def flask_fread():
 
 
 @application.route("/fwrite", methods=['POST'])
-@log_route
+@log_route()
 def flask_fwrite():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
     uploaded_file = flask.request.files[FILE]
@@ -156,7 +156,7 @@ def flask_fwrite():
 
 
 @application.route("/replicate", methods=['POST'])
-@log_route
+@log_route()
 @from_subnet_ip
 def flask_replicate():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
@@ -183,7 +183,7 @@ def flask_replicate():
 
 
 @application.route("/save_replication", methods=['POST'])
-@log_route
+@log_route()
 @from_subnet_ip
 def flask_save_replication():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
@@ -208,7 +208,7 @@ def flask_save_replication():
 
 
 @application.route("/fcopy", methods=['POST'])
-@log_route
+@log_route()
 def flask_fcopy():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
     full_file_path_dest = flask.request.form.get(key=FULL_PATH_DESTINATION_KEY, default=None, type=str)
@@ -240,7 +240,7 @@ def flask_fcopy():
 
 
 @application.route("/fmove", methods=['POST'])
-@log_route
+@log_route()
 def flask_fmove():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
     full_file_path_dest = flask.request.form.get(key=FULL_PATH_DESTINATION_KEY, default=None, type=str)
@@ -272,7 +272,7 @@ def flask_fmove():
 
 
 @application.route("/ddir", methods=['POST'])
-@log_route
+@log_route()
 def flask_ddir():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
 
@@ -294,7 +294,7 @@ def flask_ddir():
 
 
 @application.route("/ping", methods=["POST"])
-@log_route
+@log_route()
 @from_subnet_ip
 def ping():
     try:
@@ -312,6 +312,18 @@ def tell_naming_node_im_born():
 
 
 if __name__ == "__main__":
+    # Creating root of DS
+    if os.path.exists(ROOT):
+        try:
+            shutil.rmtree(ROOT)
+        except OSError:
+            debug_log(f"Deletion of the directory {ROOT} failed")
+
+    try:
+        os.mkdir(ROOT)
+    except OSError:
+        debug_log(f"Creation of the directory {ROOT} failed")
+
     tell_naming_node_im_born()
-    application.debug = True
+    # application.debug = True
     application.run(host="0.0.0.0", port=80)

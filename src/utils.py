@@ -13,7 +13,6 @@ from constants import *
 from logger import debug_log
 
 https_client = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
-dump_redis = True
 
 
 def encode_auth_token(login: str) -> str:
@@ -66,25 +65,40 @@ def from_subnet_ip(func):
     return wrapped_function
 
 
-def log_route(func):
-    @functools.wraps(func)
-    def wrapped_function(*args, **kwargs):
-        file_name = os.path.basename(func.__globals__['__file__'])
-        ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
-        debug_log(f"[{file_name}] --> Func <{func.__name__}> called from {ip} | Flask params: {flask.request.form.to_dict()}")
+def log_route(dump_redis=False, non_flask=False):
+    def decorate(func):
+        @functools.wraps(func)
+        def wrapped_function(*args, **kwargs):
 
-        debug_log(f"[{file_name}]  *- Func <{func.__name__}> \033[94m Redis dump BEFORE EXECUTION:\n{dump_all_redis()}\033[0m")
-        res = func(*args, **kwargs)
-        debug_log(f"[{file_name}]  *- Func <{func.__name__}> has been executed")
-        debug_log(f"[{file_name}]  *- Func <{func.__name__}> \033[92m Redis dump AFTER EXECUTION:\n{dump_all_redis()}\033[0m")
+            if non_flask:
+                debug_log(f" --> Func <{func.__name__}>")
+            else:
+                ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
+                debug_log(f" --> Func <{func.__name__}> called from {ip} | Flask params: {flask.request.form.to_dict()}")
 
-        if isinstance(res, flask.wrappers.Response):
-            debug_log(f"[{file_name}] <-- Func <{func.__name__}> responded with ({res._status_code}) {json.loads(res.response[0])}")
-        else:
-            debug_log(f"[{file_name}] <-- Func <{func.__name__}> returned non flask_response? {type(res)}")
-        return res
+            if dump_redis:
+                debug_log(f"  *- Func <{func.__name__}> \033[94m Redis dump BEFORE EXECUTION:\033[0m"
+                          f"\n\033[94mvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n{dump_all_redis()}\033[0m"
+                          f"\n\033[94m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\033[0m")
+            res = func(*args, **kwargs)
+            debug_log(f"  *- Func <{func.__name__}> has been executed")
+            if dump_redis:
+                debug_log(f"  *- Func <{func.__name__}> \033[92m Redis dump AFTER EXECUTION:\033[0m"
+                          f"\n\033[92mvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n{dump_all_redis()}\033[0m"
+                          f"\n\033[92m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\033[0m")
 
-    return wrapped_function
+            if non_flask:
+                debug_log(f" <-- Func <{func.__name__}>")
+            else:
+                if isinstance(res, flask.wrappers.Response):
+                    debug_log(f" <-- Func <{func.__name__}> responded with ({res._status_code}) {json.loads(res.response[0])}")
+                else:
+                    debug_log(f" <-- Func <{func.__name__}> returned non flask_response? {type(res)}")
+
+            return res
+
+        return wrapped_function
+    return decorate
 
 
 def dump_all_redis():
@@ -108,7 +122,7 @@ def dump_all_redis():
 
 def request_node(ip, url, data, files=None):
     try:
-        res = https_client.request('POST', f"http://{ip}{url}", fields=data, files=files)
+        res = https_client.request('POST', f"http://{ip}{url}", fields=data)
         return json.loads(res.data.decode('utf-8'))
     except Exception as e:
         debug_log(f"Requesting node failed {e}")

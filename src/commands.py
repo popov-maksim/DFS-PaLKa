@@ -2,9 +2,14 @@ import hashlib
 from src.utils import read_token, save_token, request_node
 from src.constants import *
 from src.logger import debug_log
+import configparser
 
 
 START_PATH = ""
+
+config = configparser.ConfigParser()
+config.read('../client.conf')
+NAMENODE_IP = config['SERVER']['IP']
 
 
 def _update_current_path(new_path):

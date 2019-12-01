@@ -104,7 +104,7 @@ def flask_fdelete():
 
 
 @application.route("/fread", methods=['POST'])
-@log_route(non_flask=True)
+@log_route()
 def flask_fread():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
 
@@ -127,7 +127,7 @@ def flask_fread():
 
 
 @application.route("/fwrite", methods=['POST'])
-@log_route(non_flask=True)
+@log_route()
 def flask_fwrite():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
     file_bytes = flask.request.form.get(key=FILE_BYTES, default=None, type=str)

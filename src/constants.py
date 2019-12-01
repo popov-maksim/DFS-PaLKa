@@ -3,7 +3,7 @@ import os
 
 SUBNET = ipaddress.ip_network('192.168.77.0/24')
 REPLICATION_FACTOR = 3
-MAX_PING_TRIES = 5
+MAX_PING_TRIES = 2
 
 LOGIN_KEY = 'login'
 ENCRYPTED_PASS_KEY = 'encrypted_pass'

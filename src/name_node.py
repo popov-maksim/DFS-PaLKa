@@ -517,7 +517,7 @@ def flask_dir_exists():
 def flask_ddir():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
-    force = flask.request.form.get(key=FORCE_KEY, default=None, type=bool)
+    force = flask.request.form.get(key=FORCE_KEY, default=None, type=str)
 
     if not token or dir_path is None or force is None:
         data = {MESSAGE_KEY: f"Missing required parameters: `{TOKEN_KEY}`, `{PATH_KEY}`, `{FORCE_KEY}`"}
@@ -545,9 +545,9 @@ def flask_ddir():
     inner_folders_path_list = [full_path for full_path in db_user2folders.lrange(login, 0, -1)
                                if full_path.startswith(full_dir_path + '/')]
 
-    if not force and (inner_files_path_list or inner_folders_path_list):
+    if force == 'False' and (inner_files_path_list or inner_folders_path_list):
         data = {MESSAGE_KEY: 'The directory contains files. `force=true` to delete'}
-        return flask.make_response(flask.jsonify(data), HTTPStatus.NOT_MODIFIED)
+        return flask.make_response(flask.jsonify(data), HTTPStatus.NOT_ACCEPTABLE)
 
     db_user2folders.lrem(login, 0, full_dir_path)
     for inner_dir in inner_folders_path_list:
@@ -607,7 +607,7 @@ def periodically_ping_nodes():
     non_responsive_count: Dict[str, int] = {}
     while True:
         ping_nodes()
-        time.sleep(20)
+        time.sleep(5)
 
 
 def remove_node(node_ip):
@@ -615,7 +615,7 @@ def remove_node(node_ip):
     full_file_paths: List[str] = db_node2files.lrange(node_ip, 0, -1)
     db_node2files.delete(node_ip)
     for full_file_path in full_file_paths:
-        db_file2nodes.delete(full_file_path)
+        db_file2nodes.lrem(full_file_path, 0, node_ip)
         replicate(full_file_path)
 
 

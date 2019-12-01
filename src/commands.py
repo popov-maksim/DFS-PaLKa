@@ -333,7 +333,7 @@ def odir_command(params):
         return
 
     _update_current_path(f"{new_path}")
-    print(f"Your current path is {new_path}")
+    pwd()
     
 
 def rdir_command(params):
@@ -391,18 +391,22 @@ def ddir_command(params):
         print("Wrong path")
         return
 
+    if _get_current_path() == params[0] or params[0] == '':
+        print("Denied")
+        return
+
     token = read_token()
 
-    res = request_node(NAMENODE_IP, "/ddir", params, {TOKEN_KEY: token, PATH_KEY: params[0], FORCE_KEY: False})
+    res = request_node(NAMENODE_IP, "/ddir", {TOKEN_KEY: token, PATH_KEY: params[0], FORCE_KEY: False})
 
     if res.status == HTTPStatus.OK:
         print("Success!")
-    elif res.status == HTTPStatus.NOT_MODIFIED:
+    elif res.status == HTTPStatus.NOT_ACCEPTABLE:
         msg = get_dict_from_response(res)[MESSAGE_KEY]
         print(msg)
         answer = input("Delete? [Y/n]: ")
         if answer.lower() == "y":
-            res = request_node(NAMENODE_IP, "/ddir", params, {TOKEN_KEY: token, PATH_KEY: params[0], FORCE_KEY: True})
+            res = request_node(NAMENODE_IP, "/ddir", {TOKEN_KEY: token, PATH_KEY: params[0], FORCE_KEY: True})
             if res.status == HTTPStatus.OK:
                 print("Success!")
             else:
@@ -413,7 +417,7 @@ def ddir_command(params):
         print(msg)
 
 
-def pwd(params):
+def pwd(params=None):
     current_path = _get_current_path()
     print(f"You are at {current_path if current_path else '$HOME'}")
 

@@ -48,6 +48,54 @@ services:
     volumes:
       - ./:/workdir
 
+  storagenode_3:
+    depends_on:
+      - manager
+    build:
+      context: .
+      dockerfile: storagenode/Dockerfile
+    ports:
+      - "8083:80"
+    networks:
+      san:
+        aliases:
+          - storage_1
+      hostonly:
+    volumes:
+      - ./:/workdir
+
+  storagenode_4:
+    depends_on:
+      - manager
+    build:
+      context: .
+      dockerfile: storagenode/Dockerfile
+    ports:
+      - "8084:80"
+    networks:
+      san:
+        aliases:
+          - storage_1
+      hostonly:
+    volumes:
+      - ./:/workdir
+
+  storagenode_5:
+    depends_on:
+      - manager
+    build:
+      context: .
+      dockerfile: storagenode/Dockerfile
+    ports:
+      - "8085:80"
+    networks:
+      san:
+        aliases:
+          - storage_1
+      hostonly:
+    volumes:
+      - ./:/workdir
+
 networks:
   san:
     internal: true

@@ -76,7 +76,10 @@ def log_route(dump_redis=False, non_flask=False):
                 debug_log(f" --> Func \033[93m<{func.__name__}>\033[0m")
             else:
                 ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
-                debug_log(f" --> Func \033[93m<{func.__name__}>\033[0m called from {ip} | Flask params: {flask.request.form.to_dict()}")
+                forms = flask.request.form.to_dict()
+                if FILE_BYTES in forms:
+                    forms[FILE_BYTES] = "**FILE_BYTES**"
+                debug_log(f" --> Func \033[93m<{func.__name__}>\033[0m called from {ip} | Flask params: {forms}")
 
             if dump_redis:
                 debug_log(f"  *- Func \033[93m<{func.__name__}>\033[0m \033[94m Redis dump BEFORE EXECUTION:\033[0m"
@@ -93,7 +96,10 @@ def log_route(dump_redis=False, non_flask=False):
                 debug_log(f" <-- Func \033[93m<{func.__name__}>\033[0m")
             else:
                 if isinstance(res, flask.wrappers.Response):
-                    debug_log(f" <-- Func \033[93m<{func.__name__}>\033[0m responded with ({res._status_code}) {json.loads(res.response[0])}")
+                    forms = json.loads(res.response[0])
+                    if FILE_BYTES in forms:
+                        forms[FILE_BYTES] = "**FILE_BYTES**"
+                    debug_log(f" <-- Func \033[93m<{func.__name__}>\033[0m responded with ({res._status_code}) {forms}")
                 else:
                     debug_log(f" <-- Func \033[93m<{func.__name__}>\033[0m returned non flask_response? {type(res)}")
 
@@ -122,7 +128,7 @@ def dump_all_redis():
     return '\n'.join(out_strings)
 
 
-def request_node(ip, url, data, files=None):
+def request_node(ip, url, data):
     try:
         res = https_client.request('POST', f"http://{ip}{url}", fields=data)
         return res

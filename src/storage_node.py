@@ -1,9 +1,11 @@
+import codecs
 import shutil
+import threading
 from http import HTTPStatus
 from os import statvfs
+from time import sleep
 
 import flask
-import codecs
 
 from constants import *
 from logger import debug_log
@@ -57,22 +59,20 @@ def flask_fcreate():
         data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
-    file_path = get_path(full_file_path)
-
     # create new empty file
     try:
         # create all subdirs
-        all_dirs = file_path.split("/")[:-1]
+        all_dirs = full_file_path.split("/")[:-1]
         dir_path = ROOT
         for directory in all_dirs:
             dir_path = os.path.join(dir_path, directory)
             if not os.path.exists(dir_path):
                 os.mkdir(dir_path)
         # create new file there
-        with open(file_path, "w"):
+        with open(get_path(full_file_path), "w"):
             pass
     except OSError:
-        debug_log(f"Creation of the file {file_path} failed")
+        debug_log(f"Creation of the file {full_file_path} failed")
         data = {MESSAGE_KEY: "Failed during file creation."}
         return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
 
@@ -222,7 +222,7 @@ def flask_fcopy():
 
     try:
         # create all subdirs
-        all_dirs = file_path_dest.split("/")[:-1]
+        all_dirs = full_file_path_dest.split("/")[:-1]
         dir_path = ROOT
         for directory in all_dirs:
             dir_path = os.path.join(dir_path, directory)
@@ -254,7 +254,7 @@ def flask_fmove():
 
     try:
         # create all subdirs
-        all_dirs = file_path_dest.split("/")[:-1]
+        all_dirs = full_file_path_dest.split("/")[:-1]
         dir_path = ROOT
         for directory in all_dirs:
             dir_path = os.path.join(dir_path, directory)
@@ -308,6 +308,7 @@ def ping():
 
 
 def tell_naming_node_im_born():
+    sleep(2)
     request_node(NAMENODE_IP, '/new_node', {})
 
 
@@ -324,6 +325,6 @@ if __name__ == "__main__":
     except OSError:
         debug_log(f"Creation of the directory {ROOT} failed")
 
-    tell_naming_node_im_born()
+    threading.Thread(target=tell_naming_node_im_born, daemon=True).start()
     # application.debug = True
     application.run(host="0.0.0.0", port=80)

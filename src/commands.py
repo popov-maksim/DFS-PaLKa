@@ -27,12 +27,12 @@ def _get_current_path():
 def _get_path(path):
     current_path = _get_current_path()
 
-    if path[0] == "/":
+    if path and path[0] == "/":
         # absolute path to user's home directory
         path = path[1:]
     else:
         # relative path to current path
-        path = os.path.join(current_path, path)
+        path = os.path.join(current_path, path) if path != "." else current_path
 
     return path
 
@@ -224,6 +224,8 @@ def fcopy_command(params):
     # getting right path
     params[1] = _get_path(params[1])
 
+    print(params)
+
     _command(params, [PATH_KEY, PATH_DESTINATION_KEY], "fcopy")
 
 
@@ -249,6 +251,7 @@ def odir_command(params):
         return
 
     data = {TOKEN_KEY: token, PATH_KEY: new_path}
+    print(new_path)
     res = request_node(NAMENODE_IP, "/dir_exists", data)
 
     if res.status == HTTPStatus.OK:
@@ -290,8 +293,9 @@ def mdir_command(params):
 def ddir_command(params):
     # getting right path
     params[0] = _get_path(params[0])
+    params.append(True)
 
-    _command(params, [PATH_KEY], "ddir")
+    _command(params, [PATH_KEY, FORCE_KEY], "ddir")
 
 
 def pwd(params):

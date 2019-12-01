@@ -2,39 +2,65 @@ version: '3'
 
 services:
   manager:
-    build:
-      context: .
-      dockerfile: namenode/Dockerfile
+    image: fenchelfen/namenode
+    #    build:
+    #      context: .
+    #      dockerfile: namenode/Dockerfile
     ports:
-      - "8080:80"
+      - "9999:80"
     networks:
       san:
         ipv4_address: 192.168.77.3
         aliases:
           - namenode
       hostonly:
-    volumes:
-        - ./:/workdir
+#    volumes:
+#      - ./:/workdir
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints: [node.role == manager]
 
   storagenode:
     depends_on:
       - manager
-    build:
-      context: .
-      dockerfile: storagenode/Dockerfile
+    image: fenchelfen/storagenode
+    #    build:
+    #      context: .
+    #      dockerfile: storagenode/Dockerfile
     ports:
       - "8081:80"
     networks:
       san:
-        aliases:
-          - storage_1
       hostonly:
+#    volumes:
+#      - ./:/workdir
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints: [node.role == worker]
+
+
+  visualizer:
+    image: dockersamples/visualizer:stable
+    ports:
+      - "8080:8080"
+    stop_grace_period: 1m30s
     volumes:
-        - ./:/workdir
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
 
 networks:
   san:
     internal: true
+    driver: overlay
     ipam:
       driver: default
       config:

@@ -15,7 +15,7 @@ import redis
 
 from constants import *
 from logger import debug_log
-from utils import encode_auth_token, decode_auth_token, request_node, from_subnet_ip, log_route
+from utils import encode_auth_token, decode_auth_token, request_node, from_subnet_ip, log_route, get_dict_from_response
 
 application = flask.Flask(__name__)
 
@@ -115,7 +115,7 @@ def flask_init():
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     login = decode_auth_token(token)
-    if not login:
+    if not login or (type(login) == str and login not in db_auth.keys()):
         data = {MESSAGE_KEY: "The token is invalid or has expired"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
@@ -129,6 +129,7 @@ def init(login):
     data_for_node = {LOGIN_KEY: login}
     for node_ip in db_congestion.keys():
         res = request_node(node_ip, '/init', data_for_node)
+        res = get_dict_from_response(res)
         debug_log(f"/init - node {node_ip} responded wih {res}")
 
     full_file_paths = db_user2files.lrange(login, 0, -1)
@@ -154,7 +155,7 @@ def flask_fcreate():
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     login = decode_auth_token(token)
-    if not login:
+    if not login or (type(login) == str and login not in db_auth.keys()):
         data = {MESSAGE_KEY: "The token is invalid or has expired"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
@@ -172,6 +173,7 @@ def flask_fcreate():
     data_for_node = {FULL_PATH_KEY: full_file_path}
     for node_ip in nodes:
         res = request_node(node_ip, '/fcreate', data_for_node)
+        res = get_dict_from_response(res)
         debug_log(f"/fcreate - storage node {node_ip} response: {res}")
         db_node2files.lpush(node_ip, full_file_path)
 
@@ -194,7 +196,7 @@ def flask_fread():
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     login = decode_auth_token(token)
-    if not login:
+    if not login or (type(login) == str and login not in db_auth.keys()):
         data = {MESSAGE_KEY: "The token is invalid or has expired"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
@@ -226,7 +228,7 @@ def flask_fwrite():
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     login = decode_auth_token(token)
-    if not login:
+    if not login or (type(login) == str and login not in db_auth.keys()):
         data = {MESSAGE_KEY: "The token is invalid or has expired"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
@@ -258,7 +260,7 @@ def flask_fdelete():
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     login = decode_auth_token(token)
-    if not login:
+    if not login or (type(login) == str and login not in db_auth.keys()):
         data = {MESSAGE_KEY: "The token is invalid or has expired"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
@@ -271,6 +273,7 @@ def flask_fdelete():
 
     for node_ip in db_file2nodes.lrange(full_file_path, 0, -1):
         res = request_node(node_ip, '/fdelete', {FULL_PATH_KEY: full_file_path})
+        res = get_dict_from_response(res)
         if res is None:
             debug_log(f"Node {node_ip} did not response on /fdelete")
         db_node2files.lrem(node_ip, 0, full_file_path)
@@ -295,7 +298,7 @@ def flask_fcopy():
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     login = decode_auth_token(token)
-    if not login:
+    if not login or (type(login) == str and login not in db_auth.keys()):
         data = {MESSAGE_KEY: "The token is invalid or has expired"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
@@ -309,6 +312,7 @@ def flask_fcopy():
     for node_ip in db_file2nodes.lrange(full_file_path, 0, -1):
         res = request_node(node_ip, '/fcopy', {FULL_PATH_KEY: full_file_path,
                                                FULL_PATH_DESTINATION_KEY: full_file_destination_path})
+        res = get_dict_from_response(res)
         if res is None:
             debug_log(f"Node {node_ip} did not response on /fcopy")
         else:
@@ -334,7 +338,7 @@ def flask_fmove():
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     login = decode_auth_token(token)
-    if not login:
+    if not login or (type(login) == str and login not in db_auth.keys()):
         data = {MESSAGE_KEY: "The token is invalid or has expired"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
@@ -348,6 +352,7 @@ def flask_fmove():
     for node_ip in db_file2nodes.lrange(full_file_path, 0, -1):
         res = request_node(node_ip, '/fmove', {FULL_PATH_KEY: full_file_path,
                                                FULL_PATH_DESTINATION_KEY: full_file_destination_path})
+        res = get_dict_from_response(res)
         if res is None:
             debug_log(f"Node {node_ip} did not response on /fmove")
         else:
@@ -378,7 +383,7 @@ def flask_finfo():
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     login = decode_auth_token(token)
-    if not login:
+    if not login or (type(login) == str and login not in db_auth.keys()):
         data = {MESSAGE_KEY: "The token is invalid or has expired"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
@@ -401,7 +406,7 @@ def flask_finfo():
 #         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 #
 #     login = decode_auth_token(token)
-#     if not login:
+#     if not login or (type(login) == str and login not in db_auth.keys()):
 #         data = {MESSAGE_KEY: "The token is invalid or has expired"}
 #         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 #
@@ -425,7 +430,7 @@ def flask_rdir():
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     login = decode_auth_token(token)
-    if not login:
+    if not login or (type(login) == str and login not in db_auth.keys()):
         data = {MESSAGE_KEY: "The token is invalid or has expired"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
@@ -459,7 +464,7 @@ def flask_mdir():
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     login = decode_auth_token(token)
-    if not login:
+    if not login or (type(login) == str and login not in db_auth.keys()):
         data = {MESSAGE_KEY: "The token is invalid or has expired"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
@@ -470,7 +475,7 @@ def flask_mdir():
         data = {MESSAGE_KEY: f"Can't read the folder, doesn't exist. (ERR: {os.path.dirname(full_dir_path)})"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
-    db_user2files.lpush(login, full_dir_path)
+    db_user2folders.lpush(login, full_dir_path)
 
     data = {MESSAGE_KEY: 'Successfully created a directory'}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
@@ -489,7 +494,7 @@ def flask_mdir():
 #         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 #
 #     login = decode_auth_token(token)
-#     if not login:
+#     if not login or (type(login) == str and login not in db_auth.keys()):
 #         data = {MESSAGE_KEY: "The token is invalid or has expired"}
 #         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 #
@@ -522,6 +527,7 @@ def flask_mdir():
 #
 #     for node_ip in nodes_ip:
 #         res = request_node(node_ip, '/ddir', {FULL_PATH_KEY: full_dir_path})
+#         res = get_dict_from_response(res)
 #         if res is None:
 #             debug_log(f"Node {node_ip} did not response on /ddir")
 #
@@ -549,6 +555,7 @@ def periodically_ping_nodes():
             if node_ip not in non_responsive_count:
                 non_responsive_count[node_ip] = 0
             res = request_node(node_ip, '/ping', {})
+            res = get_dict_from_response(res)
             if res is None:
                 non_responsive_count[node_ip] += 1
                 debug_log(f"Node {node_ip} did not response {non_responsive_count[node_ip]} times")
@@ -562,7 +569,7 @@ def periodically_ping_nodes():
     non_responsive_count: Dict[str, int] = {}
     while True:
         ping_nodes()
-        time.sleep(2)
+        time.sleep(20)
 
 
 def remove_node(node_ip):
@@ -596,6 +603,7 @@ def flask_uploaded():
     nodes_with_obsolete_files.remove(source_node_ip)
     for node_ip in nodes_with_obsolete_files:
         res = request_node(node_ip, '/fdelete', {FULL_PATH_KEY: full_file_path})
+        res = get_dict_from_response(res)
         if res is None:
             debug_log(f"Node {node_ip} did not response on /fdelete")
         db_node2files.lrem(node_ip, 0, full_file_path)
@@ -624,6 +632,7 @@ def replicate(full_file_path: str):
     for target_node_ip in target_nodes_ip:
         res = request_node(source_nodes_ip[0], '/replicate', {FULL_PATH_KEY: full_file_path,
                                                               NODE_IP_KEY: target_node_ip})
+        res = get_dict_from_response(res)
         if res is None:
             debug_log(f"Node {source_nodes_ip[0]} did not response on /replicate")
         else:

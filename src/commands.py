@@ -1,8 +1,9 @@
 import hashlib
-from src.utils import read_token, save_token, request_node
-from src.constants import *
-from src.logger import debug_log
+from utils import read_token, save_token, request_node, get_dict_from_response
+from constants import *
+from logger import debug_log
 import configparser
+from http import HTTPStatus
 
 
 START_PATH = ""
@@ -14,14 +15,13 @@ NAMENODE_IP = config['SERVER']['IP']
 
 def _update_current_path(new_path):
     # saving user's work directory
-    with open(CURRENT_PATH, "w") as f:
-        f.write(new_path)
+    config.set('SERVER', 'CURRENT_PATH', new_path)
+    with open('../client.conf', 'w') as f:
+        config.write(f)
 
 
 def _get_current_path():
-    with open(CURRENT_PATH, "r") as f:
-        current_path = f.read().strip()
-    return current_path
+    return config['SERVER']['CURRENT_PATH']
 
 
 def _get_path(path):
@@ -62,17 +62,17 @@ def _auth(params, action):
         print("Please give me non-empty login and password")
         return
     
-    encrypted_pass = hashlib.md5(password)
+    encrypted_pass = hashlib.md5(password.encode('utf-8')).hexdigest()
     data = {LOGIN_KEY: login, ENCRYPTED_PASS_KEY: encrypted_pass}
     res = request_node(NAMENODE_IP, f"/{action}", data)
 
-    if res.ok:
-        token = res.json[TOKEN_KEY]
+    if res.status == HTTPStatus.OK:
+        token = get_dict_from_response(res)[TOKEN_KEY]
         save_token(token)
         _update_current_path(START_PATH)
         print("Success!\nYou were logged in.")
     else:
-        msg = res.json[MESSAGE_KEY]
+        msg = get_dict_from_response(res)[MESSAGE_KEY]
         print(msg)
 
 
@@ -86,12 +86,12 @@ def _command(params, keys, action):
     params = _get_dict(params, keys)
 
     res = request_node(NAMENODE_IP, f"/{action}", params)
-    debug_log(res.json())
+    debug_log(get_dict_from_response(res))
 
-    if res.ok:
+    if res.status == HTTPStatus.OK:
         print("Success!")
     else:
-        msg = res.json[MESSAGE_KEY]
+        msg = get_dict_from_response(res)[MESSAGE_KEY]
         print(msg)
 
 
@@ -147,16 +147,16 @@ def fread_command(params):
     params[0] = _get_path(params[0])
 
     res = request_node(NAMENODE_IP, "/fread", {TOKEN_KEY: token, PATH_KEY: params[0]})
-    debug_log(res.json())
+    debug_log(get_dict_from_response(res))
 
-    if res.ok:
-        storage_node_ip = res.json[NODE_IP_KEY]
-        full_path = res.json[FULL_PATH_KEY]
+    if res.status == HTTPStatus.OK:
+        storage_node_ip = get_dict_from_response(res)[NODE_IP_KEY]
+        full_path = get_dict_from_response(res)[FULL_PATH_KEY]
 
         storage_res = request_node(storage_node_ip, "/fread", {FULL_PATH_KEY: full_path})
-        debug_log(res.json())
+        debug_log(get_dict_from_response(storage_res))
 
-        if storage_res.headers['status']:
+        if storage_res.headers['status'] == HTTPStatus.OK:
             file_data = storage_res.data
             with open(filename, "wb") as f:
                 f.write(file_data)
@@ -164,7 +164,7 @@ def fread_command(params):
         else:
             print("Unsuccessful")
     else:
-        msg = res.json[MESSAGE_KEY]
+        msg = get_dict_from_response(res)[MESSAGE_KEY]
         print(msg)
 
 
@@ -177,22 +177,23 @@ def fwrite_command(params):
     params[0] = _get_path(os.path.basename(params[0]))
 
     res = request_node(NAMENODE_IP, "/fwrite", {TOKEN_KEY: token, PATH_KEY: params[0]})
-    debug_log(res.json())
+    debug_log(get_dict_from_response(res))
 
-    if res.ok:
-        storage_node_ip = res.json[NODE_IP_KEY]
+    if res.status == HTTPStatus.OK:
+        storage_node_ip = get_dict_from_response(res)[NODE_IP_KEY]
 
-        storage_res = request_node(storage_node_ip, "/fwrite", {FULL_PATH_KEY: res.json[FULL_PATH_KEY]},
+        storage_res = request_node(storage_node_ip, "/fwrite",
+                                   {FULL_PATH_KEY: get_dict_from_response(res)[FULL_PATH_KEY]},
                                    [(FILE, (filename, open(filename, 'rb'), 'application/octet'))])
-        debug_log(res.json())
+        debug_log(get_dict_from_response(storage_res))
 
-        if storage_res.ok:
+        if storage_res.status == HTTPStatus.OK:
             print("Success!")
         else:
-            msg = storage_res.json[MESSAGE_KEY]
+            msg = get_dict_from_response(storage_res)[MESSAGE_KEY]
             print(msg)
     else:
-        msg = res.json[MESSAGE_KEY]
+        msg = get_dict_from_response(res)[MESSAGE_KEY]
         print(msg)
 
 
@@ -206,13 +207,13 @@ def finfo_command(params):
     params = _get_dict(params, [PATH_KEY, TOKEN_KEY])
 
     res = request_node(NAMENODE_IP, "/finfo", params)
-    debug_log(res.json())
+    debug_log(get_dict_from_response(res))
 
-    if res.ok:
-        file_size = res.json[FILE_SIZE_KEY]
+    if res.status == HTTPStatus.OK:
+        file_size = get_dict_from_response(res)[FILE_SIZE_KEY]
         print(f"{params[0]} has size {file_size}")
     else:
-        msg = res.json[MESSAGE_KEY]
+        msg = get_dict_from_response(res)[MESSAGE_KEY]
         print(msg)
 
 
@@ -250,11 +251,11 @@ def odir_command(params):
     data = {TOKEN_KEY: token, PATH_KEY: new_path}
     res = request_node(NAMENODE_IP, "/dir_exists", data)
 
-    if res.ok:
+    if res.status == HTTPStatus.OK:
         _update_current_path(f"{new_path}")
         print(f"Your current path is {new_path}")
     else:
-        msg = res.json[MESSAGE_KEY]
+        msg = get_dict_from_response(res)[MESSAGE_KEY]
         print(msg)
     
 
@@ -268,14 +269,14 @@ def rdir_command(params):
     params = _get_dict(params, [PATH_KEY, TOKEN_KEY])
 
     res = request_node(NAMENODE_IP, "/rdir", params)
-    debug_log(res.json())
+    debug_log(get_dict_from_response(res))
 
-    if res.ok:
-        dir_list = res.json[DIR_LIST_KEY]
+    if res.status == HTTPStatus.OK:
+        dir_list = get_dict_from_response(res)[DIR_LIST_KEY]
         for l in dir_list:
             print(f" -- {l}")
     else:
-        msg = res.json[MESSAGE_KEY]
+        msg = get_dict_from_response(res)[MESSAGE_KEY]
         print(msg)
 
 
@@ -295,7 +296,7 @@ def ddir_command(params):
 
 def pwd(params):
     current_path = _get_current_path()
-    print(f"You at {current_path if current_path else 'YOUR HOME'}")
+    print(f"You are at {current_path if current_path else '$HOME'}")
 
 
 AVAILABLE_COMMANDS = {
@@ -313,6 +314,7 @@ AVAILABLE_COMMANDS = {
     "ddir": ["deletedirectory", "ddir", "deldir", "deld"],
     "reg": ["registration", "reg", "registrate"],
     "login": ["login", "signin"],
+    "pwd": "pwd",
     "help": "help",
 }
 

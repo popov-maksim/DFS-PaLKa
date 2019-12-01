@@ -22,15 +22,13 @@ FORCE_KEY = 'force'
 FILE = 'file'
 
 TOKEN_TTL_MINUTES = 30
-TOKEN_FILE = 'token.tk'
 
 NAMENODE_IP = "namenode"
 
 ROOT = '/home/dfs'
 
-CURRENT_PATH = 'current_path.txt'
-
-try:
-    SECRET_KEY = os.getenv('SECRET_KEY')
-except ValueError as e:
-    print('Environment variable `SECRET_KEY` is absent.')
+# try:
+#     SECRET_KEY = os.getenv('SECRET_KEY')
+# except ValueError as e:
+#     from utils import debug_log
+#     debug_log('Environment variable `SECRET_KEY` is absent.')

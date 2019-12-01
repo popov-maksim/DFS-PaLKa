@@ -407,6 +407,10 @@ def flask_finfo():
 
     full_file_path = os.path.join(login, file_path)
 
+    if full_file_path not in db_user2files.lrange(login, 0, -1):
+        data = {MESSAGE_KEY: f"The file doesn't exist. (ERR: {full_file_path})"}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
+
     data = {NODE_IP_KEY: db_file2nodes.lrange(full_file_path, 0, -1),
             FILE_SIZE_KEY: db_file2size.get(full_file_path)}
 

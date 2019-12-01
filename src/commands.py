@@ -211,7 +211,9 @@ def finfo_command(params):
 
     if res.status == HTTPStatus.OK:
         file_size = get_dict_from_response(res)[FILE_SIZE_KEY]
-        print(f"{params[0]} has size {file_size}")
+        nodes_ip = get_dict_from_response(res)[NODE_IP_KEY]
+        print(f"Size of `{params[PATH_KEY]}` = {file_size} bytes\n"
+              f"It's stored on {len(nodes_ip)} nodes: {nodes_ip}")
     else:
         msg = get_dict_from_response(res)[MESSAGE_KEY]
         print(msg)

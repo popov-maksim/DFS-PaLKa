@@ -1,7 +1,7 @@
 import hashlib
+import base64
 from utils import read_token, save_token, request_node, get_dict_from_response
 from constants import *
-from logger import debug_log
 import configparser
 from http import HTTPStatus
 
@@ -25,16 +25,26 @@ def _get_current_path():
 
 
 def _get_path(path):
-    current_path = _get_current_path()
-
-    if path and path[0] == "/":
-        # absolute path to user's home directory
-        path = path[1:]
+    if path[0] == "/":
+        res_path = [""]
     else:
-        # relative path to current path
-        path = os.path.join(current_path, path) if path != "." else current_path
+        res_path = _get_current_path().split("/")
 
-    return path
+    splitted_path = path.split("/")
+
+    for dir in splitted_path:
+        if dir == "..":
+            if len(res_path) > 0 and res_path[-1] != "":
+                res_path.pop()
+            else:
+                return None, False
+        elif dir != ".":
+            res_path.append(dir)
+
+    if len(res_path) == 0:
+        res_path.append('')
+
+    return os.path.join(*res_path), True
 
 
 def _dir_exists(path):
@@ -43,10 +53,10 @@ def _dir_exists(path):
     data = {TOKEN_KEY: token, PATH_KEY: path}
     res = request_node(NAMENODE_IP, "/dir_exists", data)
 
-    if res.ok:
-        return True
+    if res.status == HTTPStatus.OK:
+        return True, get_dict_from_response(res)[MESSAGE_KEY]
     else:
-        return False
+        return False, get_dict_from_response(res)[MESSAGE_KEY]
 
 
 def _auth(params, action):
@@ -86,7 +96,6 @@ def _command(params, keys, action):
     params = _get_dict(params, keys)
 
     res = request_node(NAMENODE_IP, f"/{action}", params)
-    debug_log(get_dict_from_response(res))
 
     if res.status == HTTPStatus.OK:
         print("Success!")
@@ -125,41 +134,63 @@ def init_command(params):
 
 
 def fdelete_command(params):
+    if len(params) < 1:
+        print("Please specify a file to delete")
+        return
+
     # getting right path
-    params[0] = _get_path(params[0])
+    params[0], result = _get_path(params[0])
+
+    if not result:
+        print("Wrong path")
+        return
 
     _command(params, [PATH_KEY], "fdelete")
 
 
 def fcreate_command(params):
+    if len(params) < 1:
+        print("Please specify name of a file")
+        return
+
     # getting right path
-    params[0] = _get_path(params[0])
+    params[0], result = _get_path(params[0])
+
+    if not result:
+        print("Wrong path")
+        return
 
     _command(params, [PATH_KEY], "fcreate")
 
 
 def fread_command(params):
+    if len(params) < 1:
+        print("Please specify a file to read")
+        return
+
     token = read_token()
 
     filename = os.path.basename(params[0])
 
     # getting right path
-    params[0] = _get_path(params[0])
+    params[0], result = _get_path(params[0])
+
+    if not result:
+        print("Wrong path")
+        return
 
     res = request_node(NAMENODE_IP, "/fread", {TOKEN_KEY: token, PATH_KEY: params[0]})
-    debug_log(get_dict_from_response(res))
 
     if res.status == HTTPStatus.OK:
         storage_node_ip = get_dict_from_response(res)[NODE_IP_KEY]
         full_path = get_dict_from_response(res)[FULL_PATH_KEY]
 
         storage_res = request_node(storage_node_ip, "/fread", {FULL_PATH_KEY: full_path})
-        debug_log(get_dict_from_response(storage_res))
 
-        if storage_res.headers['status'] == HTTPStatus.OK:
-            file_data = storage_res.data
+        if storage_res.status == HTTPStatus.OK:
+            file_data = get_dict_from_response(storage_res)[FILE_BYTES]
             with open(filename, "wb") as f:
-                f.write(file_data)
+                f.write(base64.decodebytes(file_data.encode()))
             print("Success!")
         else:
             print("Unsuccessful")
@@ -169,23 +200,36 @@ def fread_command(params):
 
 
 def fwrite_command(params):
+    if len(params) < 1:
+        print("Please specify a file to write to")
+        return
+
     token = read_token()
 
     filename = params[0]
 
+    if not os.path.exists(filename):
+        print("There is no such file")
+        return
+
     # getting right path
-    params[0] = _get_path(os.path.basename(params[0]))
+    params[0], result = _get_path(os.path.basename(params[0]))
+
+    if not result:
+        print("Wrong path")
+        return
 
     res = request_node(NAMENODE_IP, "/fwrite", {TOKEN_KEY: token, PATH_KEY: params[0]})
-    debug_log(get_dict_from_response(res))
 
     if res.status == HTTPStatus.OK:
         storage_node_ip = get_dict_from_response(res)[NODE_IP_KEY]
 
+        with open(filename, 'rb') as f:
+            file_data = f.read()
+
         storage_res = request_node(storage_node_ip, "/fwrite",
-                                   {FULL_PATH_KEY: get_dict_from_response(res)[FULL_PATH_KEY]},
-                                   [(FILE, (filename, open(filename, 'rb'), 'application/octet'))])
-        debug_log(get_dict_from_response(storage_res))
+                                   {FULL_PATH_KEY: get_dict_from_response(res)[FULL_PATH_KEY],
+                                    FILE_BYTES: str(base64.encodebytes(file_data), 'utf-8')})
 
         if storage_res.status == HTTPStatus.OK:
             print("Success!")
@@ -198,8 +242,16 @@ def fwrite_command(params):
 
 
 def finfo_command(params):
+    if len(params) < 1:
+        print("Please specify a file")
+        return
+
     # getting right path
-    params[0] = _get_path(params[0])
+    params[0], result = _get_path(params[0])
+
+    if not result:
+        print("Wrong path")
+        return
 
     token = read_token()
 
@@ -207,7 +259,6 @@ def finfo_command(params):
     params = _get_dict(params, [PATH_KEY, TOKEN_KEY])
 
     res = request_node(NAMENODE_IP, "/finfo", params)
-    debug_log(get_dict_from_response(res))
 
     if res.status == HTTPStatus.OK:
         file_size = get_dict_from_response(res)[FILE_SIZE_KEY]
@@ -220,53 +271,82 @@ def finfo_command(params):
 
 
 def fcopy_command(params):
-    # getting right path
-    params[0] = _get_path(params[0])
+    if len(params) < 2:
+        print("Please specify files: source and destination (copy to)")
+        return
 
     # getting right path
-    params[1] = _get_path(params[1])
+    params[0], result = _get_path(params[0])
 
-    print(params)
+    if not result:
+        print("Wrong path")
+        return
+
+    # getting right path
+    params[1], result = _get_path(params[1])
+
+    if not result:
+        print("Wrong path")
+        return
 
     _command(params, [PATH_KEY, PATH_DESTINATION_KEY], "fcopy")
 
 
 def fmove_command(params):
-    # getting right path
-    params[0] = _get_path(params[0])
+    if len(params) < 2:
+        print("Please specify files: source and destination (move to)")
+        return
 
     # getting right path
-    params[1] = _get_path(params[1])
+    params[0], result = _get_path(params[0])
+
+    if not result:
+        print("Wrong path")
+        return
+
+    # getting right path
+    params[1], result = _get_path(params[1])
+
+    if not result:
+        print("Wrong path")
+        return
 
     _command(params, [PATH_KEY, PATH_DESTINATION_KEY], "fmove")
 
 
 def odir_command(params):
-    token = read_token()
-
-    # getting right path
-    new_path = _get_path(params[0])
-
-    if ".." in new_path or "." in new_path:
-        print("Please use only absolute path or forward relative")
-        print(f"Your current path is {_get_current_path()}")
+    if len(params) < 1:
+        print("Please specify new directory")
         return
 
-    data = {TOKEN_KEY: token, PATH_KEY: new_path}
-    print(new_path)
-    res = request_node(NAMENODE_IP, "/dir_exists", data)
+    # getting right path
+    new_path, result = _get_path(params[0])
 
-    if res.status == HTTPStatus.OK:
-        _update_current_path(f"{new_path}")
-        print(f"Your current path is {new_path}")
-    else:
-        msg = get_dict_from_response(res)[MESSAGE_KEY]
+    if not result:
+        print("Wrong path")
+        return
+
+    exists, msg = _dir_exists(new_path)
+
+    if not exists:
         print(msg)
+        return
+
+    _update_current_path(f"{new_path}")
+    print(f"Your current path is {new_path}")
     
 
 def rdir_command(params):
+    if len(params) < 1:
+        print("Please specify a directory to read")
+        return
+
     # getting right path
-    params[0] = _get_path(params[0])
+    params[0], result = _get_path(params[0])
+
+    if not result:
+        print("Wrong path")
+        return
 
     token = read_token()
 
@@ -274,7 +354,6 @@ def rdir_command(params):
     params = _get_dict(params, [PATH_KEY, TOKEN_KEY])
 
     res = request_node(NAMENODE_IP, "/rdir", params)
-    debug_log(get_dict_from_response(res))
 
     if res.status == HTTPStatus.OK:
         dir_list = get_dict_from_response(res)[DIR_LIST_KEY]
@@ -286,18 +365,52 @@ def rdir_command(params):
 
 
 def mdir_command(params):
+    if len(params) < 1:
+        print("Please specify directory name")
+        return
+
     # getting right path
-    params[0] = _get_path(params[0])
+    params[0], result = _get_path(params[0])
+
+    if not result:
+        print("Wrong path")
+        return
 
     _command(params, [PATH_KEY], "mdir")
 
 
 def ddir_command(params):
-    # getting right path
-    params[0] = _get_path(params[0])
-    params.append(True)
+    if len(params) < 1:
+        print("Please specify a directory to delete")
+        return
 
-    _command(params, [PATH_KEY, FORCE_KEY], "ddir")
+    # getting right path
+    params[0], result = _get_path(params[0])
+
+    if not result:
+        print("Wrong path")
+        return
+
+    token = read_token()
+
+    res = request_node(NAMENODE_IP, "/ddir", params, {TOKEN_KEY: token, PATH_KEY: params[0], FORCE_KEY: False})
+
+    if res.status == HTTPStatus.OK:
+        print("Success!")
+    elif res.status == HTTPStatus.NOT_MODIFIED:
+        msg = get_dict_from_response(res)[MESSAGE_KEY]
+        print(msg)
+        answer = input("Delete? [Y/n]: ")
+        if answer.lower() == "y":
+            res = request_node(NAMENODE_IP, "/ddir", params, {TOKEN_KEY: token, PATH_KEY: params[0], FORCE_KEY: True})
+            if res.status == HTTPStatus.OK:
+                print("Success!")
+            else:
+                msg = get_dict_from_response(res)[MESSAGE_KEY]
+                print(msg)
+    else:
+        msg = get_dict_from_response(res)[MESSAGE_KEY]
+        print(msg)
 
 
 def pwd(params):

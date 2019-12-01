@@ -1,15 +1,15 @@
-import codecs
 import shutil
 import threading
 from http import HTTPStatus
 from os import statvfs
 from time import sleep
+import base64
 
 import flask
 
 from constants import *
 from logger import debug_log
-from utils import request_node, from_subnet_ip, log_route
+from utils import request_node, from_subnet_ip, log_route, get_dict_from_response
 
 application = flask.Flask(__name__)
 
@@ -56,7 +56,7 @@ def flask_fcreate():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
 
     if not full_file_path:
-        data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`"}
+        data = {MESSAGE_KEY: f"Missing required parameters: `{FULL_PATH_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     # create new empty file
@@ -86,7 +86,7 @@ def flask_fdelete():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
 
     if not full_file_path:
-        data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`"}
+        data = {MESSAGE_KEY: f"Missing required parameters: `{FULL_PATH_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     file_path = get_path(full_file_path)
@@ -104,52 +104,61 @@ def flask_fdelete():
 
 
 @application.route("/fread", methods=['POST'])
-@log_route()
+@log_route(non_flask=True)
 def flask_fread():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
 
     if not full_file_path:
-        data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`"}
+        data = {MESSAGE_KEY: f"Missing required parameters: `{FULL_PATH_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     file_path = get_path(full_file_path)
 
     try:
-        with codecs.open(file_path, "rb") as f:
-            file_data = f.read()
+        with open(file_path, 'rb') as f:
+            file_data = str(base64.encodebytes(f.read()), 'utf-8')
     except OSError as e:
         debug_log(e.strerror)
         data = {MESSAGE_KEY: "Error on storage server"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
 
-    response = flask.make_response()
-    response.headers['status'] = HTTPStatus.OK
-    response.data = file_data
-
-    return response
+    data = {FILE_BYTES: file_data}
+    return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
 @application.route("/fwrite", methods=['POST'])
-@log_route()
+@log_route(non_flask=True)
 def flask_fwrite():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
-    uploaded_file = flask.request.files[FILE]
+    file_bytes = flask.request.form.get(key=FILE_BYTES, default=None, type=str)
 
-    if not full_file_path or not uploaded_file:
-        data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`"}
+    if not full_file_path or file_bytes is None:
+        data = {MESSAGE_KEY: f"Missing required parameters: `{FULL_PATH_KEY}`, `{FILE_BYTES}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     file_path = get_path(full_file_path)
+    file_bytes = base64.decodebytes(file_bytes.encode())
 
     try:
-        uploaded_file.save(file_path)
+        all_dirs = full_file_path.split("/")[:-1]
+        dir_path = ROOT
+        for directory in all_dirs:
+            dir_path = os.path.join(dir_path, directory)
+            if not os.path.exists(dir_path):
+                os.mkdir(dir_path)
+        # writeing to file
+        with open(file_path, 'wb') as f:
+            f.write(file_bytes)
     except OSError as e:
         debug_log(e.strerror)
         data = {MESSAGE_KEY: "Error on the server"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
 
-    data = {FULL_PATH_KEY: full_file_path, FILE_SIZE_KEY: len(uploaded_file)}
-    request_node(NAMENODE_IP, '/uploaded', data)
+    data = {FULL_PATH_KEY: full_file_path, FILE_SIZE_KEY: len(file_bytes)}
+    res = request_node(NAMENODE_IP, '/uploaded', data)
+    if res.status != HTTPStatus.OK:
+        data = {MESSAGE_KEY: get_dict_from_response(res)[MESSAGE_KEY]}
+        return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
     data = {MESSAGE_KEY: "OK"}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
@@ -170,13 +179,13 @@ def flask_replicate():
 
     try:
         with open(file_path, "rb") as f:
-            binary_file = f.read()
+            file_data = str(base64.encodebytes(f.read()), 'utf-8')
     except OSError as e:
         debug_log(e.strerror)
         data = {MESSAGE_KEY: "Error on storage server"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.INTERNAL_SERVER_ERROR)
 
-    data = {FULL_PATH_KEY: full_file_path, BINARY_FILE: binary_file}
+    data = {FULL_PATH_KEY: full_file_path, FILE_BYTES: file_data}
     request_node(target_node_ip, '/save_replication', data)
 
     return flask.make_response(flask.jsonify({}), HTTPStatus.OK)
@@ -187,17 +196,18 @@ def flask_replicate():
 @from_subnet_ip
 def flask_save_replication():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
-    binary_file = flask.request.form.get(key=BINARY_FILE, default=None, type=str)
+    file_bytes = flask.request.form.get(key=FILE_BYTES, default=None, type=str)
 
-    if not full_file_path or not binary_file:
-        data = {MESSAGE_KEY: f"Missing required parameters: `{FULL_PATH_KEY}`, `{BINARY_FILE}`"}
+    if not full_file_path or not file_bytes:
+        data = {MESSAGE_KEY: f"Missing required parameters: `{FULL_PATH_KEY}`, `{FILE_BYTES}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     file_path = get_path(full_file_path)
+    file_bytes = base64.decodebytes(file_bytes.encode())
 
     try:
-        with open(file_path, "wb") as f:
-            f.write(binary_file)
+        with open(file_path, 'wb') as f:
+            f.write(file_bytes)
     except OSError as e:
         debug_log(e.strerror)
         data = {MESSAGE_KEY: "Error on the server"}
@@ -214,7 +224,7 @@ def flask_fcopy():
     full_file_path_dest = flask.request.form.get(key=FULL_PATH_DESTINATION_KEY, default=None, type=str)
 
     if not full_file_path or not full_file_path_dest:
-        data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`"}
+        data = {MESSAGE_KEY: f"Missing required parameters: `{FULL_PATH_KEY}`, `{FULL_PATH_DESTINATION_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     file_path = get_path(full_file_path)
@@ -246,7 +256,7 @@ def flask_fmove():
     full_file_path_dest = flask.request.form.get(key=FULL_PATH_DESTINATION_KEY, default=None, type=str)
 
     if not full_file_path or not full_file_path_dest:
-        data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`"}
+        data = {MESSAGE_KEY: f"Missing required parameters: `{FULL_PATH_KEY}`, `{FULL_PATH_DESTINATION_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     file_path = get_path(full_file_path)
@@ -277,7 +287,7 @@ def flask_ddir():
     full_file_path = flask.request.form.get(key=FULL_PATH_KEY, default=None, type=str)
 
     if not full_file_path:
-        data = {MESSAGE_KEY: f"Missing required parameters: `{LOGIN_KEY}`"}
+        data = {MESSAGE_KEY: f"Missing required parameters: `{FULL_PATH_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
     file_path = get_path(full_file_path)

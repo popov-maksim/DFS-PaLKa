@@ -19,7 +19,7 @@ FILE_SIZE_KEY = 'file_size'
 EXISTS_KEY = 'exists'
 DIR_LIST_KEY = 'dir_list'
 FORCE_KEY = 'force'
-FILE = 'file'
+FILE_BYTES = 'file'
 
 TOKEN_TTL_MINUTES = 30
 

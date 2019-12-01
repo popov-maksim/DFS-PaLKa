@@ -16,7 +16,7 @@ services:
     volumes:
         - ./:/workdir
 
-  storagenode:
+  storagenode_1:
     depends_on:
       - manager
     build:
@@ -31,6 +31,22 @@ services:
       hostonly:
     volumes:
         - ./:/workdir
+
+  storagenode_2:
+    depends_on:
+      - manager
+    build:
+      context: .
+      dockerfile: storagenode/Dockerfile
+    ports:
+      - "8082:80"
+    networks:
+      san:
+        aliases:
+          - storage_1
+      hostonly:
+    volumes:
+      - ./:/workdir
 
 networks:
   san:

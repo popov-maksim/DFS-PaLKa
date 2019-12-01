@@ -1,3 +1,5 @@
+#!/bin/bash
+
 ../src/client.py reg dimon qwerty
 ../src/client.py fcreate file.txt
 ../src/client.py mkdir ewq

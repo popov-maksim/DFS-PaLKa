@@ -492,7 +492,7 @@ def flask_dir_exists():
     token = flask.request.form.get(key=TOKEN_KEY, default=None, type=str)
     dir_path = flask.request.form.get(key=PATH_KEY, default=None, type=str)
 
-    if not token or not dir_path:
+    if not token or dir_path is None:
         data = {MESSAGE_KEY: f"Missing required parameters: `{TOKEN_KEY}`, `{PATH_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
@@ -502,7 +502,7 @@ def flask_dir_exists():
         return flask.make_response(flask.jsonify(data), HTTPStatus.FORBIDDEN)
 
     dir_path = dir_path[:-1] if dir_path and dir_path[-1] == '/' else dir_path
-    full_dir_path = os.path.join(login, dir_path)
+    full_dir_path = os.path.join(login, dir_path) if dir_path else login
 
     if full_dir_path not in db_user2folders.lrange(login, 0, -1):
         data = {MESSAGE_KEY: "The folder doesn't exist"}
@@ -630,15 +630,21 @@ def flask_uploaded():
         data = {MESSAGE_KEY: f"Missing required parameters: `{FULL_PATH_KEY}`, `{FILE_SIZE_KEY}`"}
         return flask.make_response(flask.jsonify(data), HTTPStatus.UNPROCESSABLE_ENTITY)
 
-    login = full_file_path.split(':')[0]
+    login = full_file_path.split('/')[0]
 
     db_file2size.set(full_file_path, file_size)
-    db_user2files.set(login, full_file_path)
+    if full_file_path not in db_user2files.lrange(login, 0, -1):
+        db_user2files.lpush(login, full_file_path)
 
     source_node_ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
 
     nodes_with_obsolete_files = db_file2nodes.lrange(full_file_path, 0, -1)
-    nodes_with_obsolete_files.remove(source_node_ip)
+    if source_node_ip in nodes_with_obsolete_files:
+        nodes_with_obsolete_files.remove(source_node_ip)
+    else:
+        db_node2files.lpush(source_node_ip, full_file_path)
+        db_file2nodes.lpush(full_file_path, source_node_ip)
+
     for node_ip in nodes_with_obsolete_files:
         res = request_node(node_ip, '/fdelete', {FULL_PATH_KEY: full_file_path})
         res = get_dict_from_response(res)

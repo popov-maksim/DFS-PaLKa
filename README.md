@@ -9,11 +9,25 @@ for DS Course.
 Innopolis 2019
 
 ## How to launch
-* ```docker stack deploy -c docker-compose.yml palka```
+```console
+docker stack deploy -c docker-compose.yml palka
+```
 
 ## Architectural diagrams
-![arch.png](./pictures/arch.png)
-![redis.jpg](./pictures/redis.jpg)
+<img src="./pictures/arch.png" width="600">
+
+## Database in Naming Server
+<img src="./pictures/redis.jpg" width="600">
+
+## Redis dump after executing the following commands:
+```console
+./client.py reg max pass
+./client.py mdir folder_1
+./client.py mdir folder_1/subfolder 
+./client.py fcreate folder_1/text.txt
+./client.py fwrite mus.flac
+```
+<img src="./pictures/redis_dump.png" width="600">
 
 ## Description of communication protocols
-![protocols.jpg](./pictures/protocols.jpg)
+<img src="./pictures/protocols.jpg" width="600">

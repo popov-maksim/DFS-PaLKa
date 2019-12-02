@@ -57,12 +57,13 @@ def save_token(token):
 def from_subnet_ip(func):
     @functools.wraps(func)
     def wrapped_function(*args, **kwargs):
-        ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
-        is_allowed = ip and ipaddress.ip_address(ip) in SUBNET
-        debug_log(f"Query from {ip} - {'Allowed' if is_allowed else 'Denied'}")
-        if is_allowed:
-            return func(*args, **kwargs)
-        return flask.make_response(flask.jsonify({MESSAGE_KEY: "Who are you? GTFO!"}), HTTPStatus.FORBIDDEN)
+        return func(*args, **kwargs)
+        # ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
+        # is_allowed = ip and ipaddress.ip_address(ip) in SUBNET
+        # debug_log(f"Query from {ip} - {'Allowed' if is_allowed else 'Denied'}")
+        # if is_allowed:
+        #     return func(*args, **kwargs)
+        # return flask.make_response(flask.jsonify({MESSAGE_KEY: "Who are you? GTFO!"}), HTTPStatus.FORBIDDEN)
 
     return wrapped_function
 
@@ -76,7 +77,8 @@ def log_route(dump_redis=False, non_flask=False):
                 debug_log(f" --> Func \033[93m<{func.__name__}>\033[0m")
             else:
                 ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
-                debug_log(f" --> Func \033[93m<{func.__name__}>\033[0m called from {ip} | Flask params: {flask.request.form.to_dict()}")
+                debug_log(
+                    f" --> Func \033[93m<{func.__name__}>\033[0m called from {ip} | Flask params: {flask.request.form.to_dict()}")
 
             if dump_redis:
                 debug_log(f"  *- Func \033[93m<{func.__name__}>\033[0m \033[94m Redis dump BEFORE EXECUTION:\033[0m"
@@ -93,27 +95,32 @@ def log_route(dump_redis=False, non_flask=False):
                 debug_log(f" <-- Func \033[93m<{func.__name__}>\033[0m")
             else:
                 if isinstance(res, flask.wrappers.Response):
-                    debug_log(f" <-- Func \033[93m<{func.__name__}>\033[0m responded with ({res._status_code}) {json.loads(res.response[0])}")
+                    debug_log(
+                        f" <-- Func \033[93m<{func.__name__}>\033[0m responded with ({res._status_code}) {json.loads(res.response[0])}")
                 else:
                     debug_log(f" <-- Func \033[93m<{func.__name__}>\033[0m returned non flask_response? {type(res)}")
 
             return res
 
         return wrapped_function
+
     return decorate
 
 
 def dump_all_redis():
-    from name_node import redis_test, db_auth, db_node2files, db_user2files, db_file2nodes, db_file2size, db_congestion, db_user2folders
+    from name_node import redis_test, db_auth, db_node2files, db_user2files, db_file2nodes, db_file2size, db_congestion, \
+        db_user2folders
     out_strings = []
 
-    for db, name in {redis_test: "redis_test", db_auth: "db_auth", db_file2size: "db_file2size", db_congestion: "db_congestion"}.items():
+    for db, name in {redis_test: "redis_test", db_auth: "db_auth", db_file2size: "db_file2size",
+                     db_congestion: "db_congestion"}.items():
         dump = {}
         for key in db.keys():
             dump[key] = db.get(key)
         out_strings.append(f"{name} {json.dumps(dump, indent=2)}")
 
-    for db, name in {db_user2folders: "db_user2folders", db_node2files: "db_node2files", db_user2files: "db_user2files", db_file2nodes: "db_file2nodes"}.items():
+    for db, name in {db_user2folders: "db_user2folders", db_node2files: "db_node2files", db_user2files: "db_user2files",
+                     db_file2nodes: "db_file2nodes"}.items():
         dump = {}
         for key in db.keys():
             dump[key] = db.lrange(key, 0, -1)

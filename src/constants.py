@@ -23,7 +23,7 @@ FILE = 'file'
 
 TOKEN_TTL_MINUTES = 30
 
-NAMENODE_IP = "namenode"
+NAMENODE_IP = "manager"
 
 ROOT = '/home/dfs'
 

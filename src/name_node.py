@@ -141,6 +141,10 @@ def init(login):
         db_user2files.delete(full_file_path)
         for node in nodes_containing_file:
             db_node2files.lrem(node, 1, full_file_path)
+            res = request_node(node, '/fdelete', {FULL_PATH_KEY: full_file_path})
+            res = get_dict_from_response(res)
+            if res is None:
+                debug_log(f"Node {node_ip} did not response on /fdelete")
     db_user2folders.delete(login)
     db_user2folders.lpush(login, login)
     return was_initialised_before

@@ -12,7 +12,7 @@ Innopolis 2019
 * ```docker stack deploy -c docker-compose.yml palka```
 
 ## Architectural diagrams
-
+![arch.png](./pictures/arch.png)
 
 
 ## Description of communication protocols

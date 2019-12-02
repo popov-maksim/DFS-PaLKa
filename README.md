@@ -13,6 +13,7 @@ Innopolis 2019
 
 ## Architectural diagrams
 ![arch.png](./pictures/arch.png)
-
+![redis.jpg](./pictures/redis.jpg)
 
 ## Description of communication protocols
+![protocols.jpg](./pictures/protocols.jpg)

@@ -607,7 +607,7 @@ def periodically_ping_nodes():
     non_responsive_count: Dict[str, int] = {}
     while True:
         ping_nodes()
-        time.sleep(5)
+        time.sleep(1.5)
 
 
 def remove_node(node_ip):

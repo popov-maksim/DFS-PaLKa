@@ -318,7 +318,7 @@ def ping():
 
 
 def tell_naming_node_im_born():
-    sleep(2)
+    sleep(5)
     request_node(NAMENODE_IP, '/new_node', {})
 
 

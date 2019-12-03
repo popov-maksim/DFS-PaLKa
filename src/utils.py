@@ -57,12 +57,13 @@ def save_token(token):
 def from_subnet_ip(func):
     @functools.wraps(func)
     def wrapped_function(*args, **kwargs):
-        ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
-        is_allowed = ip and ipaddress.ip_address(ip) in SUBNET
-        debug_log(f"Query from {ip} - {'Allowed' if is_allowed else 'Denied'}")
-        if is_allowed:
-            return func(*args, **kwargs)
-        return flask.make_response(flask.jsonify({MESSAGE_KEY: "Who are you? GTFO!"}), HTTPStatus.FORBIDDEN)
+        return func(*args, **kwargs)
+        # ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
+        # is_allowed = ip and ipaddress.ip_address(ip) in SUBNET
+        # debug_log(f"Query from {ip} - {'Allowed' if is_allowed else 'Denied'}")
+        # if is_allowed:
+        #     return func(*args, **kwargs)
+        # return flask.make_response(flask.jsonify({MESSAGE_KEY: "Who are you? GTFO!"}), HTTPStatus.FORBIDDEN)
 
     return wrapped_function
 
@@ -110,10 +111,10 @@ def log_route(dump_redis=False, non_flask=False):
 
 
 def dump_all_redis():
-    from name_node import redis_test, db_auth, db_node2files, db_user2files, db_file2nodes, db_file2size, db_congestion, db_user2folders
+    from name_node import redis_test, db_auth, db_node2files, db_user2files, db_file2nodes, db_file2size, db_congestion, db_user2folders, db_pub
     out_strings = []
 
-    for db, name in {redis_test: "redis_test", db_auth: "db_auth", db_file2size: "db_file2size", db_congestion: "db_congestion"}.items():
+    for db, name in {redis_test: "redis_test", db_auth: "db_auth", db_file2size: "db_file2size", db_congestion: "db_congestion", db_pub: "db_pub"}.items():
         dump = {}
         for key in db.keys():
             dump[key] = db.get(key)

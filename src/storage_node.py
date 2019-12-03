@@ -1,11 +1,12 @@
+import base64
 import shutil
 import threading
 from http import HTTPStatus
 from os import statvfs
 from time import sleep
-import base64
 
 import flask
+import requests
 
 from constants import *
 from logger import debug_log
@@ -318,8 +319,11 @@ def ping():
 
 
 def tell_naming_node_im_born():
-    sleep(2)
-    request_node(NAMENODE_IP, '/new_node', {})
+    debug_log("Wait 7 sec...")
+    sleep(7)
+    pub_ip = requests.request("GET", "http://169.254.169.254/latest/meta-data/public-ipv4").text
+    debug_log(f"Going to tell that I'm born, pub_ip = {pub_ip}")
+    request_node(NAMENODE_IP, '/new_node', {'pub': pub_ip})
 
 
 if __name__ == "__main__":

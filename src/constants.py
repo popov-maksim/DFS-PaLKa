@@ -23,7 +23,7 @@ FILE_BYTES = 'file'
 
 TOKEN_TTL_MINUTES = 30
 
-NAMENODE_IP = "namenode"
+NAMENODE_IP = "172.31.45.136"
 
 ROOT = '/home/dfs'
 

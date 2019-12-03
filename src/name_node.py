@@ -50,6 +50,10 @@ db_file2size.set_response_callback('GET', int)
 db_congestion = redis.Redis(host='localhost', port=6379, db=6, decode_responses=True)
 db_congestion.set_response_callback('GET', float)
 
+# node_id(str): pub_ip(str)
+db_pub = redis.Redis(host='localhost', port=6379, db=7, decode_responses=True)
+db_pub.set_response_callback('GET', str)
+
 
 @application.route("/test", methods=['POST'])
 @log_route(dump_redis=True)
@@ -219,7 +223,7 @@ def flask_fread():
         return flask.make_response(flask.jsonify(data), HTTPStatus.GONE)
     node_ip = congestions[0][0]
 
-    data = {NODE_IP_KEY: node_ip, FULL_PATH_KEY: full_file_path}
+    data = {NODE_IP_KEY: db_pub.get(node_ip), FULL_PATH_KEY: full_file_path}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
@@ -251,7 +255,7 @@ def flask_fwrite():
         return flask.make_response(flask.jsonify(data), HTTPStatus.GONE)
     node_ip = congestions[0][0]
 
-    data = {NODE_IP_KEY: node_ip, FULL_PATH_KEY: os.path.join(login, file_path)}
+    data = {NODE_IP_KEY: db_pub.get(node_ip), FULL_PATH_KEY: os.path.join(login, file_path)}
     return flask.make_response(flask.jsonify(data), HTTPStatus.OK)
 
 
@@ -582,11 +586,13 @@ def flask_ddir():
 @from_subnet_ip
 def flask_new_node():
     new_node_ip = flask.request.environ.get('HTTP_X_REAL_IP', flask.request.remote_addr)
+    pub_ip = flask.request.form.get(key='pub', default=None, type=str)
     if new_node_ip in db_congestion.keys():
         debug_log(f"!!!!!!!ERROR!!!!!!!! {new_node_ip} calls /new_node but it's already in the db")
     else:
-        debug_log(f"{new_node_ip} calls /new_node and added to db")
+        debug_log(f"{new_node_ip} calls /new_node and added to db. Pub_ip = {pub_ip}")
     db_congestion.set(new_node_ip, 0)
+    db_pub.set(new_node_ip, pub_ip)
     return flask.make_response(flask.jsonify({}), HTTPStatus.OK)
 
 
